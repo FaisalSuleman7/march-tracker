@@ -144,8 +144,14 @@ let cRank=null,cScore=null,cSubTrends=null;
 function fmt(n,dp){if(n==null||n===undefined)return'—';return Number(n).toFixed(dp!=null?dp:5);}
 function fmtInt(n){if(n==null)return'—';return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function toLocal(s){
+  // Use pre-saved Munich time if available
   if(s.timestamp_local)return s.timestamp_local.replace(' local','');
-  if(s.timestamp){try{const d=new Date(s.timestamp);const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}catch(e){}}
+  // Convert UTC timestamp to Munich time (UTC+1)
+  if(s.timestamp){try{
+    const d=new Date(new Date(s.timestamp).getTime()+60*60*1000); // +1 hour for Munich
+    const p=n=>String(n).padStart(2,'0');
+    return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes());
+  }catch(e){}}
   return'—';
 }
 function subLabel(s){
