@@ -254,11 +254,38 @@ def save_history(history, submissions=None):
         json.dump(history, f, indent=2)
 
 
-def record_snapshot(history, rank, score, total, top_score, top_name, entries_count):
-    from datetime import timedelta
+def estimate_games_scored(prev_score, curr_score, prev_snap=None):
+    """
+    Estimate how many of 63 total tournament games have been scored.
+    Uses the Brier score improvement as a proxy — more games = more stable scores.
+    This is an approximation based on typical scoring patterns.
+    """
+    # Tournament round game counts: R1=32, R2=16, S16=8, E8=4, F4=2, Championship=1
+    # We track this manually via the tournament schedule
+    from datetime import date
+    today = date.today()
+    # Count games by date (approximate — actual depends on Kaggle scoring)
+    schedule = [
+        (date(2026, 3, 19), 8),   # Play-in games
+        (date(2026, 3, 20), 8),   # R1 day 1
+        (date(2026, 3, 21), 8),   # R1 day 2
+        (date(2026, 3, 22), 8),   # R2 day 1
+        (date(2026, 3, 23), 8),   # R2 day 2
+        (date(2026, 3, 27), 4),   # S16 day 1
+        (date(2026, 3, 28), 4),   # S16 day 2
+        (date(2026, 3, 29), 2),   # E8 day 1
+        (date(2026, 3, 30), 2),   # E8 day 2
+        (date(2026, 4,  5), 2),   # F4
+        (date(2026, 4,  6), 1),   # Championship
+    ]
+    games = sum(g for d, g in schedule if d <= today)
+    return min(games, 63)
+
+
+def record_snapshot(history, rank, score, total, top_score, top_name,
+                    entries_count, top8=None):
+    from datetime import timedelta, date
     now       = datetime.now(timezone.utc)
-    # Always use Munich time (UTC+1) regardless of where the script runs
-    # This ensures GitHub Actions and local PC show the same timezone
     munich    = now + timedelta(hours=1)
     prev      = history['snapshots'][-1] if history['snapshots'] else {}
 
@@ -266,6 +293,7 @@ def record_snapshot(history, rank, score, total, top_score, top_name, entries_co
     score_change = round(score - prev['score'], 6) if score and prev.get('score') else None
     percentile   = round((1 - rank / total) * 100, 2) if rank and total else None
     gap_to_top   = round(score - top_score, 6) if score and top_score else None
+    games_scored = estimate_games_scored(prev.get('score'), score)
 
     snap = {
         'timestamp'         : now.isoformat(),
@@ -281,12 +309,42 @@ def record_snapshot(history, rank, score, total, top_score, top_name, entries_co
         'top_score'         : top_score,
         'top_team'          : top_name,
         'gap_to_top'        : gap_to_top,
+        'games_scored'      : games_scored,
+        'top8'              : top8 or [],
     }
     history['snapshots'].append(snap)
     if rank  and (history['best_rank']  is None or rank  < history['best_rank']):
         history['best_rank']  = rank
     if score and (history['best_score'] is None or score < history['best_score']):
         history['best_score'] = score
+
+    # Update daily summary
+    day_key = munich.strftime('%Y-%m-%d')
+    if 'daily_summaries' not in history:
+        history['daily_summaries'] = {}
+    if day_key not in history['daily_summaries']:
+        history['daily_summaries'][day_key] = {
+            'date'          : day_key,
+            'start_rank'    : rank,
+            'start_score'   : score,
+            'best_rank'     : rank,
+            'worst_rank'    : rank,
+            'end_rank'      : rank,
+            'end_score'     : score,
+            'checks'        : 1,
+            'games_scored'  : games_scored,
+        }
+    else:
+        d = history['daily_summaries'][day_key]
+        d['end_rank']   = rank
+        d['end_score']  = score
+        d['checks']    += 1
+        d['games_scored'] = games_scored
+        if rank and (d['best_rank']  is None or rank < d['best_rank']):
+            d['best_rank']  = rank
+        if rank and (d['worst_rank'] is None or rank > d['worst_rank']):
+            d['worst_rank'] = rank
+
     return snap
 
 
@@ -392,9 +450,17 @@ def run_check(verbose=True):
     top_score = top['score'] if top else None
     top_name  = top['name']  if top else '?'
 
+    # Extract top 8 for leaderboard tracking
+    top8 = [{'rank': i+1, 'name': e['name'], 'score': e['score']}
+            for i, e in enumerate(scored[:8])]
+    if verbose:
+        print(f"👑 Top 8:")
+        for t in top8:
+            print(f"   #{t['rank']}  {t['name']:<30}  {t['score']:.5f}")
+
     history = load_history()
     snap    = record_snapshot(history, rank, score, total,
-                              top_score, top_name, len(scored))
+                              top_score, top_name, len(scored), top8)
     save_history(history, submissions if submissions else history.get('submissions'))
 
     if verbose:
