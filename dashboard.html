@@ -717,7 +717,7 @@ function renderStats(h,s,snaps){
   set('v-total','of '+fmtInt(s.total_teams)+' teams');
   const pct = s.percentile!=null ? (100-s.percentile).toFixed(1) : null;
   set('v-pct', pct ? 'top '+pct+'%' : '—');
-  set('v-pct-sub', pct ? 'better than '+(s.percentile).toFixed(1)+'% of teams' : 'of all teams');
+  set('v-pct-sub', pct ? 'ranked higher than '+s.percentile.toFixed(1)+'% of teams' : 'of all teams');
   set('v-score',fmt(s.score,5));
   set('v-best',h.best_rank?'#'+fmtInt(h.best_rank):'—');
   set('v-bscore','score: '+fmt(h.best_score,5));
