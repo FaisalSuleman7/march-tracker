@@ -623,32 +623,61 @@ function renderTop8Chart(snaps){
   const valid = snaps.filter(s => s.top8 && s.top8.length > 0);
   if(valid.length < 1) return;
 
-  const labels   = valid.map(s => toLocal(s));
-  const COLORS   = ['#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#94a3b8'];
+  const labels = valid.map(s => toLocal(s));
+  const COLORS = ['#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#94a3b8','#f43f5e','#10b981'];
 
-  // Collect all unique team names across all valid snapshots
-  const nameSet = new Set();
-  valid.forEach(s => s.top8.forEach(t => nameSet.add(t.name)));
-  const names = [...nameSet].slice(0, 8);
+  // Collect ALL unique team names ever seen across ALL snapshots — not just current
+  const nameMap = {}; // name -> {firstSeen, lastSeen, peakRank, color}
+  let colorIdx = 0;
+  valid.forEach((s, si) => {
+    s.top8.forEach(t => {
+      if(!nameMap[t.name]){
+        nameMap[t.name] = {
+          firstSeen : si,
+          lastSeen  : si,
+          peakRank  : t.rank,
+          color     : COLORS[colorIdx++ % COLORS.length],
+        };
+      } else {
+        nameMap[t.name].lastSeen = si;
+        if(t.rank < nameMap[t.name].peakRank) nameMap[t.name].peakRank = t.rank;
+      }
+    });
+  });
 
-  const datasets = names.map((name, i) => ({
-    label           : name.length > 20 ? name.slice(0,18)+'…' : name,
-    data            : valid.map(s => {
+  // Sort by peak rank (best rank first)
+  const names = Object.keys(nameMap).sort((a,b) => nameMap[a].peakRank - nameMap[b].peakRank);
+
+  const datasets = names.map(name => {
+    const meta = nameMap[name];
+    const data = valid.map(s => {
       const entry = s.top8.find(t => t.name === name);
-      return entry ? entry.score : null;
-    }),
-    borderColor     : COLORS[i % COLORS.length],
-    backgroundColor : 'transparent',
-    borderWidth     : 2,
-    pointBackgroundColor: COLORS[i % COLORS.length],
-    pointBorderColor: '#080b10',
-    pointBorderWidth: 2,
-    pointRadius     : 4,
-    pointHoverRadius: 7,
-    tension         : 0.3,
-    fill            : false,
-    spanGaps        : true,
-  }));
+      return entry ? entry.score : null;  // null = not in top8 at this snapshot = gap in line
+    });
+
+    // Is this team currently in top8?
+    const lastSnap = valid[valid.length-1];
+    const currentlyIn = lastSnap.top8.some(t => t.name === name);
+    const label = (name.length > 18 ? name.slice(0,16)+'…' : name)
+                + (currentlyIn ? '' : ' ✗');  // ✗ = dropped out
+
+    return {
+      label,
+      data,
+      borderColor     : meta.color,
+      backgroundColor : 'transparent',
+      borderWidth     : currentlyIn ? 2.5 : 1.5,
+      borderDash      : currentlyIn ? [] : [4,3],  // dashed = dropped out
+      pointBackgroundColor: meta.color,
+      pointBorderColor: '#080b10',
+      pointBorderWidth: 2,
+      pointRadius     : 4,
+      pointHoverRadius: 7,
+      tension         : 0.3,
+      fill            : false,
+      spanGaps        : false,  // false = show gaps when team not in top8
+    };
+  });
 
   const ctx = document.getElementById('cTop8').getContext('2d');
   if(cTop8) cTop8.destroy();
@@ -658,7 +687,23 @@ function renderTop8Chart(snaps){
     options: {
       responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
       plugins: {
-        legend: { display: true, labels: { color:'#94a3b8', font:{family:'JetBrains Mono',size:9}, boxWidth:10, padding:10 }},
+        legend: {
+          display: true,
+          labels: {
+            color:'#94a3b8', font:{family:'JetBrains Mono',size:9},
+            boxWidth:10, padding:10,
+            // Grey out teams that dropped out
+            generateLabels: chart => chart.data.datasets.map((ds,i)=>({
+              text         : ds.label,
+              fillStyle    : ds.borderColor,
+              strokeStyle  : ds.borderColor,
+              lineWidth    : 2,
+              hidden       : false,
+              index        : i,
+              fontColor    : ds.label.includes('✗') ? '#475569' : '#94a3b8',
+            }))
+          }
+        },
         tooltip: {
           backgroundColor:'#0f1318', borderColor:'#1e2530', borderWidth:1,
           titleColor:'#475569', bodyColor:'#e2e8f0',
@@ -666,7 +711,7 @@ function renderTop8Chart(snaps){
           padding:8, mode:'index', intersect:false,
           callbacks:{
             title: c=>'📅 '+c[0].label,
-            label: c=>c.raw!=null ? '  '+c.dataset.label+': '+fmt(c.raw,5) : null,
+            label: c=>c.raw!=null ? '  '+c.dataset.label+': '+fmt(c.raw,5) : '  '+c.dataset.label+': not in top 8',
           }
         }
       },
@@ -747,12 +792,48 @@ function renderTop8(snaps, yourName){
 
 // ── Daily Summary ─────────────────────────────────────────────────
 function renderDailySummary(h){
-  const el       = document.getElementById('daily-summary');
-  const summaries= h.daily_summaries || {};
-  const days     = Object.keys(summaries).sort().reverse();
+  const el = document.getElementById('daily-summary');
+
+  // Build summaries from snapshots directly — more reliable than stored summaries
+  // which may be missing recent days if tracker.py wasn't updated yet
+  const snaps = h.snapshots ? [...h.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp)) : [];
+  const built = {};
+
+  snaps.forEach(s=>{
+    // Convert UTC to Munich (UTC+1) for day key
+    const munich = new Date(new Date(s.timestamp).getTime()+60*60*1000);
+    const day    = munich.toISOString().slice(0,10);
+    const rank   = s.rank;
+    const games  = s.games_scored != null ? s.games_scored*2 : null; // *2 for men+women
+
+    if(!built[day]){
+      built[day]={
+        date:'',start_rank:rank,start_score:s.score,
+        best_rank:rank,worst_rank:rank,
+        end_rank:rank,end_score:s.score,
+        checks:1,games_scored:games
+      };
+    } else {
+      const d=built[day];
+      d.end_rank=rank; d.end_score=s.score; d.checks++;
+      if(games!=null) d.games_scored=games;
+      if(rank&&(d.best_rank==null||rank<d.best_rank)) d.best_rank=rank;
+      if(rank&&(d.worst_rank==null||rank>d.worst_rank)) d.worst_rank=rank;
+    }
+  });
+
+  // Merge with stored summaries (stored may have extra fields)
+  const stored = h.daily_summaries || {};
+  const allDays = new Set([...Object.keys(built), ...Object.keys(stored)]);
+  const merged  = {};
+  allDays.forEach(day=>{
+    merged[day] = {...(stored[day]||{}), ...(built[day]||{})};
+  });
+
+  const days = Object.keys(merged).sort().reverse();
 
   if(!days.length){
-    el.innerHTML='<div class="empty">No game day summaries yet — data builds up after the first full day</div>';
+    el.innerHTML='<div class="empty">No game day summaries yet</div>';
     return;
   }
 
@@ -766,14 +847,15 @@ function renderDailySummary(h){
       <span>Notes</span>
     </div>
     ${days.map(day=>{
-      const d      = summaries[day];
-      const change = d.end_rank && d.start_rank ? d.start_rank - d.end_rank : null;
+      const d      = merged[day];
+      const change = d.end_rank&&d.start_rank ? d.start_rank-d.end_rank : null;
       const chColor= change==null?'var(--muted)':change>0?'var(--green)':change<0?'var(--red)':'var(--muted)';
       const chText = change==null?'—':change>0?`↑${change} places`:change<0?`↓${Math.abs(change)} places`:'→ no change';
-      const games  = d.games_scored != null ? `${d.games_scored}/63 games scored` : '';
-      const checks = `${d.checks} checks`;
-      return `<div class="day-row">
-        <span style="color:var(--orange)">${day}</span>
+      const games  = d.games_scored!=null ? `${d.games_scored}/134 games` : '';
+      const checks = `${d.checks||0} checks`;
+      const isToday= day===new Date(new Date().getTime()+60*60*1000).toISOString().slice(0,10);
+      return `<div class="day-row" style="${isToday?'background:rgba(249,115,22,.03);':''}">
+        <span style="color:${isToday?'var(--orange)':'var(--text)'}">${day}${isToday?' 🔴':''}</span>
         <span>${d.start_rank?'#'+fmtInt(d.start_rank):'—'}</span>
         <span>${d.end_rank?'#'+fmtInt(d.end_rank):'—'}</span>
         <span style="color:var(--green)">${d.best_rank?'#'+fmtInt(d.best_rank):'—'}</span>
