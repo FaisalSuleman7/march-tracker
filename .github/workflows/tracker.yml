@@ -2,16 +2,17 @@ name: March Mania Rank Tracker
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
-  workflow_dispatch:
+    - cron: '*/30 * * * *'   # every 30 minutes
+  workflow_dispatch:           # manual trigger
 
 jobs:
   track:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -19,15 +20,75 @@ jobs:
         run: pip install requests pandas
 
       - name: Run tracker
+        id: tracker
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
-        run: python tracker.py --no-server --no-browser
+        run: |
+          python tracker.py --no-server --no-browser
+          
+          # Extract rank change for alert decision
+          python3 - << 'EOF'
+          import json, os
+          try:
+              with open('tracker_history.json') as f:
+                  h = json.load(f)
+              snaps = sorted(h['snapshots'], key=lambda x: x['timestamp'])
+              last  = snaps[-1]
+              rc    = last.get('rank_change')
+              rank  = last.get('rank', '?')
+              score = last.get('score', '?')
+              top   = last.get('top_score', '?')
+              gap   = last.get('gap_to_top', '?')
+              
+              # Write outputs for next step
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write(f"rank={rank}\n")
+                  f.write(f"score={score}\n")
+                  f.write(f"top_score={top}\n")
+                  f.write(f"gap={gap}\n")
+                  f.write(f"rank_change={rc if rc is not None else 0}\n")
+                  # Alert if moved 50+ places
+                  alert = abs(int(rc)) >= 50 if rc is not None and rc != 0 else False
+                  f.write(f"send_alert={'true' if alert else 'false'}\n")
+                  direction = 'UP' if (rc or 0) < 0 else 'DOWN'
+                  f.write(f"direction={direction}\n")
+          except Exception as e:
+              print(f"Output extraction error: {e}")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                  f.write("send_alert=false\n")
+          EOF
 
       - name: Commit and push history
         run: |
           git config user.name "tracker-bot"
           git config user.email "bot@tracker"
           git add tracker_history.json
-          git diff --staged --quiet || git commit -m "Rank update $(date -u '+%H:%M UTC')"
+          git diff --staged --quiet || git commit -m "Rank #${{ steps.tracker.outputs.rank }} · score ${{ steps.tracker.outputs.score }} · $(date -u '+%H:%M UTC')"
           git push
+
+      - name: Send email alert on big rank change
+        if: steps.tracker.outputs.send_alert == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          to: ${{ secrets.ALERT_EMAIL }}
+          from: March Mania Tracker <${{ secrets.GMAIL_USER }}>
+          subject: "🏀 Rank moved ${{ steps.tracker.outputs.direction }} ${{ steps.tracker.outputs.rank_change }} places → #${{ steps.tracker.outputs.rank }}"
+          body: |
+            Your March Mania 2026 rank just moved significantly!
+
+            Direction : ${{ steps.tracker.outputs.direction }}
+            Change    : ${{ steps.tracker.outputs.rank_change }} places
+            New Rank  : #${{ steps.tracker.outputs.rank }}
+            Your Score: ${{ steps.tracker.outputs.score }}
+            Leader    : ${{ steps.tracker.outputs.top_score }}
+            Gap to #1 : ${{ steps.tracker.outputs.gap }}
+
+            View dashboard: https://faisalsuleman7.github.io/march-tracker
+
+            — March Mania Rank Tracker
