@@ -337,7 +337,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
   <!-- History -->
   <div class="panel" style="margin-bottom:20px;">
     <div class="ph"><span class="pt">🕐 Snapshot History</span><span class="ps" id="snap-ct">0 snapshots</span></div>
-    <div style="padding:0 14px;max-height:500px;overflow-y:auto;" id="timeline"></div>
+    <div style="padding:0 14px;" id="timeline"></div>
   </div>
 
   <footer>
@@ -1245,6 +1245,8 @@ async function load(){
   if(!h||!h.snapshots||!h.snapshots.length){document.getElementById('warn').style.display='block';return;}
   document.getElementById('warn').style.display='none';
   window._lastHistory = h; // expose for prediction analyzer
+  // If analyzer has results, refresh its Kaggle score card
+  if(window._aResults && window._aResults.length) renderAnalysis();
 
   const snaps=sortedSnaps(h);
   const last=snaps[snaps.length-1];
@@ -1654,6 +1656,7 @@ async function runAnalysis(){
   aStatus(`Matched ${matched} games · ${unmatched} unmatched${unmatchedList?` (${unmatchedList})`:''} · Upload MTeams.csv + WTeams.csv for better matching · refreshes every 2 min`);
   if(!scored.length)return;
   aResults=scored;
+  window._aResults=scored;
   renderAnalysis();
 }
 
@@ -1666,11 +1669,13 @@ function renderAnalysis(){
   const correct=R.filter(g=>g.predictedCorrectly).length;
   const upsets=R.filter(g=>g.isUpset).length;
 
-  // Get current Kaggle score from main dashboard data
-  const kaggleSnaps = window._lastHistory ? window._lastHistory.snapshots : [];
-  const lastSnap = kaggleSnaps.length ? kaggleSnaps[kaggleSnaps.length-1] : null;
+  // Get current Kaggle score from main dashboard data — always read fresh
+  const kaggleSnaps = window._lastHistory
+    ? [...window._lastHistory.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))
+    : [];
+  const lastSnap    = kaggleSnaps.length ? kaggleSnaps[kaggleSnaps.length-1] : null;
   const kaggleBrier = lastSnap ? lastSnap.score : 0.19538;
-  const kaggleGames = lastSnap ? (lastSnap.games_scored*2||48) : 48;
+  const kaggleGames = lastSnap && lastSnap.games_scored ? lastSnap.games_scored*2 : 48;
   const myGames = R.length;
 
   ['a-stats-row','a-charts-row','a-split-row','a-games-panel','a-log-panel'].forEach(id=>{
