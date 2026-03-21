@@ -1714,15 +1714,10 @@ function renderAnalysis(){
   const p = n=>String(n).padStart(2,'0');
   const timeStr = `${now.getUTCFullYear()}-${p(now.getUTCMonth()+1)}-${p(now.getUTCDate())} ${p(now.getUTCHours())}:${p(now.getUTCMinutes())}`;
 
-  // Only log if game count or Kaggle score changed
-  const lastLog = aScoreLog[aScoreLog.length-1];
-  const changed = !lastLog
-    || lastLog.myGames !== myGames
-    || lastLog.myBrier !== totalBrier
-    || lastLog.kaggleBrier !== kaggleBrier
-    || lastLog.kaggleGames !== kaggleGames;
-
-  if(changed){
+  // Only log if this exact game count hasn't been logged before
+  const alreadyLogged = aScoreLog.some(e=>!e._fromHistory && e.myGames===myGames && e.myBrier===totalBrier);
+  const kaggleChanged = aScoreLog.length && aScoreLog.filter(e=>!e._fromHistory).some(e=>e.kaggleBrier!==kaggleBrier);
+  if(!alreadyLogged || kaggleChanged){
     // Detect if Kaggle score itself changed since last log
     let kaggleNote = '';
     if(lastLog && lastLog.kaggleBrier !== kaggleBrier){
@@ -1868,21 +1863,85 @@ function renderAnalysis(){
 function renderACharts(){
   const byDate=[...aResults].sort((a,b)=>new Date(a.date||0)-new Date(b.date||0));
   const labels=[],running=[];let sum=0;
-  byDate.forEach((g,i)=>{sum+=g.brier;labels.push(`G${i+1}`);running.push(parseFloat((sum/(i+1)).toFixed(5)));});
+  byDate.forEach((g,i)=>{
+    sum+=g.brier;
+    labels.push(`G${i+1}`);
+    running.push(parseFloat((sum/(i+1)).toFixed(5)));
+  });
+
+  // Build Kaggle score history from snapshots — shows real changes not flat line
+  const kaggleSnaps = window._lastHistory
+    ? [...window._lastHistory.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))
+    : [];
+
+  // Create a Kaggle score line that steps at each game count
+  // For each game G1..GN, find what Kaggle score was at roughly that point in time
+  // We use the most recent Kaggle score as a flat reference since we don't have per-game timestamps
+  // But show all distinct Kaggle scores as horizontal segments
+  const kaggleScores = [];
+  if(kaggleSnaps.length){
+    // Get unique score changes from snapshots
+    const scoreChanges = [];
+    let prev = null;
+    for(const s of kaggleSnaps){
+      if(s.score !== prev){
+        scoreChanges.push({score: s.score, games: s.games_scored ? s.games_scored*2 : 48});
+        prev = s.score;
+      }
+    }
+    // Map each game index to the right Kaggle score based on games_scored
+    for(let i=0;i<labels.length;i++){
+      const gameNum = i+1;
+      // Find which Kaggle score was current when this game was scored
+      let score = scoreChanges[0] ? scoreChanges[0].score : 0.19538;
+      for(const change of scoreChanges){
+        if(gameNum <= change.games) { score = change.score; break; }
+        score = change.score;
+      }
+      kaggleScores.push(score);
+    }
+  } else {
+    labels.forEach(()=>kaggleScores.push(0.19538));
+  }
+
+  const latestKaggle = kaggleSnaps.length ? kaggleSnaps[kaggleSnaps.length-1].score : 0.19538;
+  const latestGames  = kaggleSnaps.length && kaggleSnaps[kaggleSnaps.length-1].games_scored
+    ? kaggleSnaps[kaggleSnaps.length-1].games_scored*2 : 48;
 
   const ctx1=document.getElementById('cBrier').getContext('2d');
   if(cBrier)cBrier.destroy();
   const gr=ctx1.createLinearGradient(0,0,0,220);
   gr.addColorStop(0,'rgba(139,92,246,.25)');gr.addColorStop(1,'rgba(139,92,246,.02)');
   cBrier=new Chart(ctx1,{type:'line',data:{labels,datasets:[
-    {label:'Your running Brier',data:running,borderColor:'#8b5cf6',backgroundColor:gr,borderWidth:2.5,pointRadius:3,pointHoverRadius:6,tension:.4,fill:true},
-    {label:'Kaggle (0.19538)',data:labels.map(()=>0.19538),borderColor:'rgba(249,115,22,.6)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,4],pointRadius:0},
+    {label:'Your running Brier',data:running,borderColor:'#8b5cf6',backgroundColor:gr,
+     borderWidth:2.5,pointRadius:3,pointHoverRadius:6,tension:.4,fill:true},
+    {label:`Kaggle official (${fmt(latestKaggle,5)} @ ${latestGames} games)`,
+     data:kaggleScores,borderColor:'rgba(249,115,22,.8)',backgroundColor:'transparent',
+     borderWidth:2,borderDash:[5,4],pointRadius:0,stepped:'before'},
   ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
-    plugins:{legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:9},boxWidth:10,padding:10}}},
+    plugins:{
+      legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:9},boxWidth:10,padding:10}},
+      tooltip:{backgroundColor:'#0f1318',borderColor:'#1e2530',borderWidth:1,
+        titleColor:'#475569',bodyColor:'#e2e8f0',
+        titleFont:{family:'JetBrains Mono',size:9},bodyFont:{family:'JetBrains Mono',size:10},
+        padding:8,mode:'index',intersect:false,
+        callbacks:{
+          title:c=>`Game ${c[0].label}`,
+          label:c=>`  ${c.dataset.label.split(' (')[0]}: ${fmt(c.raw,5)}`,
+          afterBody:c=>{
+            const i=c[0].dataIndex;
+            const diff=running[i]-kaggleScores[i];
+            return[`  diff: ${(diff>0?'+':'')+fmt(diff,5)}`];
+          }
+        }
+      }
+    },
     scales:{
-      x:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:10},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}},
-      y:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:6},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
-        title:{display:true,text:'Brier Score',color:'#475569',font:{family:'JetBrains Mono',size:8}}}
+      x:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:10},
+         grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}},
+      y:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:6},
+         grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
+         title:{display:true,text:'Brier Score (lower = better)',color:'#475569',font:{family:'JetBrains Mono',size:8}}}
     }}});
 
   const bins=10,binData=Array(bins).fill(null).map(()=>({sum:0,count:0}));
@@ -1892,10 +1951,13 @@ function renderACharts(){
   cDist=new Chart(ctx2,{type:'bar',data:{
     labels:binData.map((_,i)=>`${i*10}–${(i+1)*10}%`),
     datasets:[
-      {label:'Avg Brier',data:binData.map(d=>d.count?parseFloat((d.sum/d.count).toFixed(5)):null),
+      {label:'Avg Brier per confidence bucket',
+       data:binData.map(d=>d.count?parseFloat((d.sum/d.count).toFixed(5)):null),
        backgroundColor:binData.map(d=>!d.count?'transparent':d.sum/d.count<0.1?'rgba(34,197,94,.6)':d.sum/d.count>0.2?'rgba(239,68,68,.6)':'rgba(59,130,246,.6)'),
        borderRadius:4,yAxisID:'y'},
-      {label:'# Games',data:binData.map(d=>d.count),type:'line',borderColor:'rgba(249,115,22,.6)',backgroundColor:'transparent',borderWidth:1.5,pointRadius:3,tension:.3,yAxisID:'y2'},
+      {label:'# Games',data:binData.map(d=>d.count),type:'line',
+       borderColor:'rgba(249,115,22,.6)',backgroundColor:'transparent',
+       borderWidth:1.5,pointRadius:3,tension:.3,yAxisID:'y2'},
     ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
       plugins:{legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:9},boxWidth:10,padding:10}}},
       scales:{
