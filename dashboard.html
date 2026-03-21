@@ -669,8 +669,8 @@ function renderProjection(snaps){
 async function load(){
   let h=null;
   const urls=[
-    'https://raw.githubusercontent.com/FaisalSuleman7/march-tracker/main/tracker_history.json?t='+Date.now(),
-    'tracker_history.json?t='+Date.now()
+    'https://raw.githubusercontent.com/FaisalSuleman7/march-tracker/main/tracker_history.json?nocache='+Date.now(),
+    'tracker_history.json?nocache='+Date.now()
   ];
   for(const url of urls){try{const r=await fetch(url);if(r.ok){h=await r.json();break;}}catch(e){}}
 
