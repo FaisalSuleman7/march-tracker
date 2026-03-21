@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>March Mania 2026 — Rank Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg:      #080b10;
+    --surface: #0f1318;
+    --card:    #141820;
+    --border:  #1e2530;
+    --orange:  #f97316;
+    --blue:    #3b82f6;
+    --green:   #22c55e;
+    --red:     #ef4444;
+    --yellow:  #eab308;
+    --text:    #e2e8f0;
+    --muted:   #475569;
+    --mono:    'JetBrains Mono', monospace;
+    --sans:    'DM Sans', sans-serif;
+    --display: 'Bebas Neue', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; padding:20px 24px 40px; }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background: radial-gradient(ellipse at 20% 10%, rgba(249,115,22,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(59,130,246,0.04) 0%, transparent 50%);
+    pointer-events:none; z-index:0;
+  }
+  .wrap { max-width:1140px; margin:0 auto; position:relative; z-index:1; }
+
+  header { display:flex; align-items:flex-end; justify-content:space-between; padding-bottom:20px; border-bottom:1px solid var(--border); margin-bottom:24px; }
+  header h1 { font-family:var(--display); font-size:56px; line-height:1; color:var(--orange); text-shadow:0 0 60px rgba(249,115,22,0.25); letter-spacing:2px; }
+  header p { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:5px; letter-spacing:2px; }
+  .live { display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; color:var(--green); }
+  .dot { width:8px; height:8px; background:var(--green); border-radius:50%; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(1.5)} }
+  .btn { background:rgba(249,115,22,.1); border:1px solid rgba(249,115,22,.3); color:var(--orange); font-family:var(--mono); font-size:10px; padding:6px 14px; border-radius:6px; cursor:pointer; letter-spacing:1px; text-transform:uppercase; transition:all .15s; margin-left:12px; }
+  .btn:hover { background:rgba(249,115,22,.2); border-color:var(--orange); }
+
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+  .card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .card.or::before { background:linear-gradient(90deg,var(--orange),transparent); }
+  .card.bl::before { background:linear-gradient(90deg,var(--blue),transparent); }
+  .card.gr::before { background:linear-gradient(90deg,var(--green),transparent); }
+  .card.ye::before { background:linear-gradient(90deg,var(--yellow),transparent); }
+  .clabel { font-family:var(--mono); font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; }
+  .cval { font-family:var(--display); font-size:46px; line-height:1; }
+  .cval.or{color:var(--orange);} .cval.bl{color:var(--blue);} .cval.gr{color:var(--green);} .cval.ye{color:var(--yellow);}
+  .csub { font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:6px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-family:var(--mono); font-size:10px; margin-top:5px; }
+  .up{background:rgba(34,197,94,.12);color:var(--green);} .dn{background:rgba(239,68,68,.12);color:var(--red);} .nc{background:rgba(71,85,105,.12);color:var(--muted);}
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .grid3 { display:grid; grid-template-columns:3fr 2fr; gap:16px; margin-bottom:16px; }
+
+  .panel { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .ph { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); background:var(--surface); }
+  .pt { font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:2px; color:var(--orange); }
+  .ps { font-family:var(--mono); font-size:9px; color:var(--muted); }
+  .pb { padding:18px; }
+
+  .chart-wrap { height:230px; padding:14px 16px; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { font-family:var(--mono); font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); text-align:left; padding:9px 14px; border-bottom:1px solid var(--border); }
+  td { font-family:var(--mono); font-size:11px; padding:9px 14px; border-bottom:1px solid rgba(30,37,48,.6); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:rgba(249,115,22,.02); }
+  .vtag { display:inline-block; padding:2px 7px; border-radius:4px; font-size:10px; background:rgba(59,130,246,.12); color:var(--blue); }
+  .vtag.act { background:rgba(249,115,22,.12); color:var(--orange); }
+  .chk { color:var(--green); font-size:15px; }
+
+  .tl-item { display:grid; grid-template-columns:170px 70px 100px 80px 1fr; gap:10px; align-items:center; padding:9px 0; border-bottom:1px solid rgba(30,37,48,.5); font-family:var(--mono); font-size:11px; }
+  .tl-item:last-child { border-bottom:none; }
+  .tl-ts{color:var(--muted);} .tl-r{color:var(--orange);font-weight:500;} .tl-up{color:var(--green);} .tl-dn{color:var(--red);} .tl-nc{color:var(--muted);}
+
+  .subbar { margin-bottom:16px; }
+  .subbar:last-child { margin-bottom:0; }
+  .subbar-hdr { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+  .subbar-name { font-family:var(--mono); font-size:11px; }
+  .subbar-score { font-family:var(--mono); font-size:13px; font-weight:500; }
+  .subbar-track { background:var(--border); border-radius:4px; height:10px; overflow:hidden; }
+  .subbar-fill { height:100%; border-radius:4px; transition:width .6s ease; }
+  .subbar-meta { display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:3px; }
+
+  #warn { background:var(--card); border:1px solid var(--yellow); border-radius:12px; padding:20px 24px; margin-bottom:20px; font-family:var(--mono); font-size:12px; line-height:2; display:none; }
+  #warn h3 { color:var(--yellow); margin-bottom:6px; }
+  #warn code { background:var(--bg); padding:1px 6px; border-radius:3px; color:var(--orange); }
+
+  footer { text-align:center; font-family:var(--mono); font-size:10px; color:var(--muted); padding-top:16px; border-top:1px solid var(--border); margin-top:4px; }
+  footer code { background:var(--surface); padding:1px 6px; border-radius:3px; color:var(--orange); }
+  .empty { text-align:center; padding:30px; color:var(--muted); font-family:var(--mono); font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>MARCH MANIA 2026</h1>
+      <p>RANK TRACKER · HMFAISAL · CLOSES APRIL 6 2026</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="live"><div class="dot"></div>LIVE</div>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);" id="last-up">—</span>
+      <button class="btn" onclick="load()">↻ REFRESH</button>
+    </div>
+  </header>
+
+  <div id="warn">
+    <h3>⚠️ No data yet</h3>
+    Run: <code>py tracker.py --interval 10</code> in your terminal.<br>
+    Then open this page via <code>http://localhost:8765</code> — not as a file.
+  </div>
+
+  <div class="stats">
+    <div class="card or">
+      <div class="clabel">Current Rank</div>
+      <div class="cval or" id="v-rank">—</div>
+      <div class="csub" id="v-total">of — teams</div>
+      <div id="v-rc"></div>
+    </div>
+    <div class="card bl">
+      <div class="clabel">Kaggle Score</div>
+      <div class="cval bl" id="v-score" style="font-size:34px;padding-top:6px;">—</div>
+      <div class="csub">Brier · lower = better</div>
+      <div id="v-sc"></div>
+    </div>
+    <div class="card gr">
+      <div class="clabel">Best Rank Ever</div>
+      <div class="cval gr" id="v-best">—</div>
+      <div class="csub" id="v-bscore">best score: —</div>
+    </div>
+    <div class="card ye">
+      <div class="clabel">Gap to Leader</div>
+      <div class="cval ye" id="v-gap" style="font-size:34px;padding-top:6px;">—</div>
+      <div class="csub" id="v-leader">leader: —</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">📈 Rank Over Time</span>
+        <span class="ps" id="chart-sub">— snapshots</span>
+      </div>
+      <div class="chart-wrap"><canvas id="cRank"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">📉 Score vs Leader</span>
+        <span class="ps">green=you · orange=leader</span>
+      </div>
+      <div class="chart-wrap"><canvas id="cScore"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">📊 Submission Performance</span>
+        <span class="ps" id="sub-count">—</span>
+      </div>
+      <div class="pb" id="sub-bars"></div>
+    </div>
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">📁 Submission Details</span>
+        <span class="ps">✓ = active</span>
+      </div>
+      <table>
+        <thead><tr><th>File</th><th>Kaggle</th><th>Local</th><th>✓</th></tr></thead>
+        <tbody id="sub-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="ph">
+      <span class="pt">📈 Submission Score Trends Over Time</span>
+      <span class="ps">each line = one submission · lower = better · more data builds over time</span>
+    </div>
+    <div class="chart-wrap" style="height:260px;"><canvas id="cSubTrends"></canvas></div>
+  </div>
+
+  <div class="panel" style="margin-bottom:20px;">
+    <div class="ph">
+      <span class="pt">🕐 Snapshot History</span>
+      <span class="ps" id="snap-ct">0 snapshots</span>
+    </div>
+    <div style="padding:0 16px;max-height:280px;overflow-y:auto;" id="timeline"></div>
+  </div>
+
+  <footer>
+    <span id="last-footer">—</span> &nbsp;·&nbsp;
+    Auto-refreshes every 60s &nbsp;·&nbsp;
+    Run <code>py tracker.py --interval 10</code>
+  </footer>
+
+</div>
+
+<script>
+let cRank = null, cScore = null, cSubTrends = null;
+
+// ── number helpers ───────────────────────────────────────────────
+function fmt(n, dp) {
+  if (n == null || n === undefined) return '—';
+  return Number(n).toFixed(dp != null ? dp : 5);
+}
+function fmtInt(n) {
+  if (n == null) return '—';
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function toLocal(s) {
+  if (s.timestamp_local) return s.timestamp_local.replace(' local','');
+  if (s.timestamp) {
+    try {
+      const d = new Date(s.timestamp);
+      const p = n => String(n).padStart(2,'0');
+      return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+    } catch(e) {}
+  }
+  return '—';
+}
+// Fix truncation — show full filename, just strip path
+function subLabel(s) {
+  if (s.version && s.version !== '?') return s.version;
+  const f = (s.file || '').replace('submission_kaggle','v').replace('submission','sub');
+  return f.replace('.csv','');
+}
+function set(id, v) { const e=document.getElementById(id); if(e) e.textContent=v; }
+function setH(id, v) { const e=document.getElementById(id); if(e) e.innerHTML=v; }
+
+// ── load data ────────────────────────────────────────────────────
+async function load() {
+  let h = null;
+  try {
+    const r = await fetch('tracker_history.json?t='+Date.now());
+    if (r.ok) h = await r.json();
+  } catch(e) {}
+
+  if (!h || !h.snapshots || !h.snapshots.length) {
+    document.getElementById('warn').style.display = 'block';
+    return;
+  }
+  document.getElementById('warn').style.display = 'none';
+
+  const last = h.snapshots[h.snapshots.length-1];
+  set('last-up', toLocal(last));
+  set('last-footer', 'Last updated: ' + toLocal(last));
+
+  renderStats(h, last);
+  renderSubs(h);
+  renderTimeline(h);
+  renderRankChart(h);
+  renderScoreChart(h);
+  renderSubTrends(h);
+}
+
+// ── stats ────────────────────────────────────────────────────────
+function renderStats(h, s) {
+  set('v-rank',  s.rank  ? '#'+fmtInt(s.rank) : '—');
+  set('v-total', 'of ' + fmtInt(s.total_teams) + ' teams');
+  set('v-score', fmt(s.score, 5));
+  set('v-best',  h.best_rank  ? '#'+fmtInt(h.best_rank) : '—');
+  set('v-bscore','best score: '+fmt(h.best_score, 5));
+  set('v-gap',   s.gap_to_top != null ? '+'+fmt(s.gap_to_top,5) : '—');
+  set('v-leader',s.top_score  ? 'leader: '+fmt(s.top_score,5) : '—');
+  set('chart-sub', h.snapshots.length + ' snapshots');
+
+  if (s.rank_change != null) {
+    const cls = s.rank_change<0?'up':s.rank_change>0?'dn':'nc';
+    const lbl = s.rank_change<0 ? '↑ '+Math.abs(s.rank_change)+' places 🎉'
+              : s.rank_change>0 ? '↓ '+s.rank_change+' places'
+              : '→ no change';
+    setH('v-rc', '<span class="badge '+cls+'">'+lbl+'</span>');
+  }
+  if (s.score_change != null) {
+    const cls = s.score_change<0?'up':s.score_change>0?'dn':'nc';
+    const lbl = s.score_change<0 ? '↑ '+fmt(Math.abs(s.score_change),5)+' better'
+              : s.score_change>0 ? '↓ '+fmt(s.score_change,5)+' worse'
+              : '→ no change';
+    setH('v-sc', '<span class="badge '+cls+'">'+lbl+'</span>');
+  }
+}
+
+// ── submissions ──────────────────────────────────────────────────
+function renderSubs(h) {
+  const subs = h.submissions || [];
+  set('sub-count', subs.length + ' submissions');
+
+  // details table
+  const tbody = document.getElementById('sub-body');
+  if (!subs.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">No submissions yet</td></tr>';
+  } else {
+    tbody.innerHTML = subs.map(s => {
+      const ver = s.version && s.version!=='?' ? '<span class="vtag '+(s.selected?'act':'')+'">'+ s.version+'</span> ' : '';
+      const fname = (s.file||'?');
+      return '<tr>'
+        +'<td>'+ver+'<span style="color:var(--muted);font-size:10px;">'+fname+'</span></td>'
+        +'<td style="color:'+(s.score?'var(--text)':'var(--muted)')+'">'+fmt(s.score,5)+'</td>'
+        +'<td style="color:'+(s.local_brier?'var(--blue)':'var(--muted)')+'">'+fmt(s.local_brier,5)+'</td>'
+        +'<td>'+(s.selected?'<span class="chk">✓</span>':'')+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+
+  // performance bars
+  const barEl = document.getElementById('sub-bars');
+  const scored = subs.filter(s=>s.score!=null).sort((a,b)=>a.score-b.score);
+  if (!scored.length) { barEl.innerHTML='<div class="empty">No scored submissions yet</div>'; return; }
+
+  const worst  = Math.max(...scored.map(s=>s.score));
+  const best   = Math.min(...scored.map(s=>s.score));
+  const range  = worst - best || 0.001;
+  const leader = h.snapshots.length ? h.snapshots[h.snapshots.length-1].top_score : null;
+
+  barEl.innerHTML = scored.map((s,i) => {
+    const pct   = Math.max(((worst - s.score) / range) * 100, 3);
+    const color = s.selected ? 'var(--green)' : i===0 ? 'var(--orange)' : 'var(--blue)';
+    const label = subLabel(s);
+    const selTag= s.selected ? ' <span style="color:var(--green);font-size:9px;">✓ ACTIVE</span>' : '';
+    const local = s.local_brier ? ' · local: '+fmt(s.local_brier,5) : '';
+    const vs    = leader ? ' · gap to #1: +'+fmt(s.score-leader,5) : '';
+    return '<div class="subbar">'
+      +'<div class="subbar-hdr">'
+        +'<span class="subbar-name" style="color:'+color+';">#'+(i+1)+' '+label+selTag+'</span>'
+        +'<span class="subbar-score" style="color:'+color+';">'+fmt(s.score,5)+'</span>'
+      +'</div>'
+      +'<div class="subbar-track"><div class="subbar-fill" style="width:'+pct+'%;background:'+color+';"></div></div>'
+      +'<div class="subbar-meta"><span>'+(s.notes||'')+local+'</span><span>'+vs+'</span></div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── timeline ─────────────────────────────────────────────────────
+function renderTimeline(h) {
+  const snaps = [...h.snapshots].reverse().slice(0,25);
+  set('snap-ct', h.snapshots.length + ' snapshots');
+  const el = document.getElementById('timeline');
+  if (!snaps.length) { el.innerHTML='<div class="empty">No snapshots yet</div>'; return; }
+  el.innerHTML = snaps.map(s => {
+    const c   = s.rank_change;
+    const sym = c==null ? '<span class="tl-nc">—</span>'
+              : c<0  ? '<span class="tl-up">↑'+Math.abs(c)+'</span>'
+              : c>0  ? '<span class="tl-dn">↓'+c+'</span>'
+              : '<span class="tl-nc">→</span>';
+    return '<div class="tl-item">'
+      +'<span class="tl-ts">'+toLocal(s)+'</span>'
+      +'<span class="tl-r">'+(s.rank?'#'+fmtInt(s.rank):'—')+'</span>'
+      +'<span>'+fmt(s.score,5)+'</span>'
+      +'<span style="color:var(--muted)">'+fmt(s.top_score,5)+'</span>'
+      +'<span>'+sym+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+// ── charts ───────────────────────────────────────────────────────
+function chartDefaults(yReverse, yLabel) {
+  return {
+    responsive:true, maintainAspectRatio:false,
+    animation:{duration:500},
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#0f1318', borderColor:'#1e2530', borderWidth:1,
+        titleColor:'#475569', bodyColor:'#e2e8f0',
+        titleFont:{family:'JetBrains Mono',size:10},
+        bodyFont: {family:'JetBrains Mono',size:11},
+        padding:10, mode:'index', intersect:false
+      }
+    },
+    scales:{
+      x:{
+        ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxRotation:30,maxTicksLimit:9},
+        grid:{color:'rgba(30,37,48,.9)'}, border:{color:'rgba(30,37,48,.9)'}
+      },
+      y:{
+        reverse:yReverse,
+        ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxTicksLimit:7},
+        grid:{color:'rgba(30,37,48,.9)'}, border:{color:'rgba(30,37,48,.9)'},
+        title:{display:!!yLabel,text:yLabel,color:'#475569',font:{family:'JetBrains Mono',size:9}}
+      }
+    }
+  };
+}
+
+function renderRankChart(h) {
+  if (typeof Chart === 'undefined') return;   // wait for Chart.js
+  const snaps = h.snapshots.filter(s=>s.rank);
+  if (!snaps.length) return;
+  const labels = snaps.map(s=>toLocal(s));
+  const data   = snaps.map(s=>s.rank);
+
+  const ctx  = document.getElementById('cRank').getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 230);
+  grad.addColorStop(0,   'rgba(249,115,22,0.00)');
+  grad.addColorStop(0.4, 'rgba(249,115,22,0.12)');
+  grad.addColorStop(1,   'rgba(249,115,22,0.28)');
+
+  if (cRank) cRank.destroy();
+  cRank = new Chart(ctx, {
+    type:'line',
+    data:{labels, datasets:[{
+      label:'Rank', data,
+      borderColor:'#f97316',
+      backgroundColor: grad,
+      borderWidth:2.5,
+      pointBackgroundColor:'#f97316',
+      pointBorderColor:'#080b10',
+      pointBorderWidth:2,
+      pointRadius:5,
+      pointHoverRadius:8,
+      tension:0.4,
+      fill:true
+    }]},
+    options:{
+      ...chartDefaults(true,'Rank (lower = better)'),
+      plugins:{
+        ...chartDefaults(true).plugins,
+        tooltip:{
+          ...chartDefaults(true).plugins.tooltip,
+          callbacks:{
+            title: ctx=>'📅 '+ctx[0].label,
+            label: ctx=>'  Rank: #'+fmtInt(ctx.raw)
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderScoreChart(h) {
+  if (typeof Chart === 'undefined') return;   // wait for Chart.js
+  const snaps = h.snapshots.filter(s=>s.score);
+  if (!snaps.length) return;
+  const labels  = snaps.map(s=>toLocal(s));
+  const yours   = snaps.map(s=>s.score);
+  const leaders = snaps.map(s=>s.top_score);
+
+  const ctx  = document.getElementById('cScore').getContext('2d');
+  const H    = 230;
+  const gGr  = ctx.createLinearGradient(0,0,0,H);
+  gGr.addColorStop(0,  'rgba(34,197,94,0.28)');
+  gGr.addColorStop(1,  'rgba(34,197,94,0.02)');
+  const gOr  = ctx.createLinearGradient(0,0,0,H);
+  gOr.addColorStop(0,  'rgba(249,115,22,0.18)');
+  gOr.addColorStop(1,  'rgba(249,115,22,0.01)');
+
+  if (cScore) cScore.destroy();
+  cScore = new Chart(ctx, {
+    type:'line',
+    data:{labels, datasets:[
+      {
+        label:'Your Score', data:yours,
+        borderColor:'#22c55e', backgroundColor:gGr,
+        borderWidth:2.5,
+        pointBackgroundColor:'#22c55e', pointBorderColor:'#080b10', pointBorderWidth:2,
+        pointRadius:5, pointHoverRadius:8,
+        tension:0.4, fill:true, order:1
+      },
+      {
+        label:'Leader', data:leaders,
+        borderColor:'#f97316', backgroundColor:gOr,
+        borderWidth:2, borderDash:[5,4],
+        pointBackgroundColor:'#f97316', pointBorderColor:'#080b10', pointBorderWidth:2,
+        pointRadius:4, pointHoverRadius:7,
+        tension:0.4, fill:true, order:2
+      }
+    ]},
+    options:{
+      ...chartDefaults(false,'Brier Score'),
+      plugins:{
+        legend:{
+          display:true,
+          labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:10},boxWidth:12,padding:16}
+        },
+        tooltip:{
+          backgroundColor:'#0f1318', borderColor:'#1e2530', borderWidth:1,
+          titleColor:'#475569', bodyColor:'#e2e8f0',
+          titleFont:{family:'JetBrains Mono',size:10},
+          bodyFont:{family:'JetBrains Mono',size:11},
+          padding:10, mode:'index', intersect:false,
+          callbacks:{
+            title: ctx=>'📅 '+ctx[0].label,
+            label: ctx=>'  '+ctx.dataset.label+': '+fmt(ctx.raw,5),
+            afterBody: ctx=>{
+              const i=ctx[0].dataIndex;
+              const gap = yours[i] && leaders[i] ? yours[i]-leaders[i] : null;
+              return gap!=null ? ['  gap to leader: +'+fmt(gap,5)] : [];
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderSubTrends(h) {
+  if (typeof Chart === 'undefined') return;
+
+  // Build per-submission score history across snapshots
+  // Each snapshot stores the submissions list with current scores
+  // We track how each file's score changes over time
+  const snaps = h.snapshots.filter(s => s.score);
+  if (!snaps.length) return;
+
+  const labels = snaps.map(s => toLocal(s));
+
+  // Collect all unique submission files seen across all snapshots
+  const fileMap = {}; // file -> { label, scores[], color }
+  const COLORS = ['#22c55e','#f97316','#3b82f6','#eab308','#ec4899','#06b6d4','#8b5cf6'];
+  let colorIdx = 0;
+
+  // Use the latest submissions list for file metadata
+  const latestSubs = h.submissions || [];
+
+  latestSubs.forEach(sub => {
+    if (!sub.file || !sub.score) return; // skip unscored
+    const lbl = subLabel(sub);
+    const col = sub.selected ? '#22c55e' : COLORS[colorIdx++ % COLORS.length];
+    fileMap[sub.file] = { label: lbl, color: col, selected: sub.selected, scores: [] };
+  });
+
+  // For each snapshot, record each submission's score
+  // Since submission scores don't change over time (they're fixed once submitted),
+  // we just plot the same score across all timestamps — this shows when it was submitted
+  // and lets you compare them on the same time axis as your rank trend
+  snaps.forEach(() => {
+    latestSubs.forEach(sub => {
+      if (fileMap[sub.file]) {
+        fileMap[sub.file].scores.push(sub.score || null);
+      }
+    });
+  });
+
+  const datasets = Object.values(fileMap)
+    .filter(d => d.scores.some(v => v != null))
+    .map(d => ({
+      label: d.label,
+      data: d.scores,
+      borderColor: d.color,
+      backgroundColor: d.color + '22',
+      borderWidth: d.selected ? 3 : 1.5,
+      borderDash: d.selected ? [] : [4,3],
+      pointBackgroundColor: d.color,
+      pointBorderColor: '#080b10',
+      pointBorderWidth: 2,
+      pointRadius: d.selected ? 5 : 3,
+      pointHoverRadius: 7,
+      tension: 0,
+      fill: false,
+    }));
+
+  if (!datasets.length) return;
+
+  const ctx = document.getElementById('cSubTrends').getContext('2d');
+  if (cSubTrends) cSubTrends.destroy();
+  cSubTrends = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500 },
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color:'#94a3b8', font:{family:'JetBrains Mono',size:10}, boxWidth:12, padding:14 }
+        },
+        tooltip: {
+          backgroundColor:'#0f1318', borderColor:'#1e2530', borderWidth:1,
+          titleColor:'#475569', bodyColor:'#e2e8f0',
+          titleFont:{family:'JetBrains Mono',size:10},
+          bodyFont:{family:'JetBrains Mono',size:11},
+          padding:10, mode:'index', intersect:false,
+          callbacks: {
+            title: ctx => '📅 '+ctx[0].label,
+            label: ctx => '  '+ctx.dataset.label+': '+fmt(ctx.raw,5)
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxRotation:30,maxTicksLimit:9},
+          grid:{color:'rgba(30,37,48,.9)'}, border:{color:'rgba(30,37,48,.9)'}
+        },
+        y: {
+          ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxTicksLimit:7},
+          grid:{color:'rgba(30,37,48,.9)'}, border:{color:'rgba(30,37,48,.9)'},
+          title:{display:true,text:'Kaggle Score (lower = better)',color:'#475569',font:{family:'JetBrains Mono',size:9}}
+        }
+      }
+    }
+  });
+}
+
+// ── init ─────────────────────────────────────────────────────────
+load();
+setInterval(load, 60000);
+</script>
+
+<!-- Chart.js loaded last — triggers a second load() once Chart is available -->
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"
+  onload="load()"
+  onerror="console.warn('Chart.js blocked')">
+</script>
+
+</body>
+</html>
