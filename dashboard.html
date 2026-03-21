@@ -318,6 +318,27 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
 <script>
 let cRank=null,cScore=null,cSubTrends=null,cProj=null;
 
+// ── Helpers — defined first so all functions below can use them ──
+function fmt(n,dp){if(n==null||n===undefined)return'—';return Number(n).toFixed(dp!=null?dp:5);}
+function fmtInt(n){if(n==null)return'—';return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function toLocal(s){
+  if(s.timestamp_local)return s.timestamp_local.replace(' local','');
+  if(s.timestamp){try{
+    const d=new Date(new Date(s.timestamp).getTime()+60*60*1000);
+    const p=n=>String(n).padStart(2,'0');
+    return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes());
+  }catch(e){}}
+  return'—';
+}
+function subLabel(s){
+  if(s.version&&s.version!=='?')return s.version;
+  const f=(s.file||'').replace('submission_kaggle','v').replace('submission','sub');
+  return f.replace('.csv','');
+}
+function set(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function setH(id,v){const e=document.getElementById(id);if(e)e.innerHTML=v;}
+function sortedSnaps(h){return[...h.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));}
+
 // ── Tournament schedule ──────────────────────────────────────────
 const ROUNDS = [
   {name:'First & Second Round', dates:'Mar 20–23', start:'2026-03-20', end:'2026-03-23', games:48, color:'#3b82f6'},
@@ -959,7 +980,20 @@ async function load(){
     'https://raw.githubusercontent.com/FaisalSuleman7/march-tracker/main/tracker_history.json?nocache='+Date.now(),
     'tracker_history.json?nocache='+Date.now()
   ];
-  for(const url of urls){try{const r=await fetch(url);if(r.ok){h=await r.json();break;}}catch(e){}}
+  for(const url of urls){
+    try{
+      console.log('Fetching:', url);
+      const r=await fetch(url);
+      console.log('Response:', r.status, r.ok);
+      if(r.ok){
+        h=await r.json();
+        console.log('Loaded snapshots:', h&&h.snapshots&&h.snapshots.length);
+        break;
+      }
+    }catch(e){
+      console.error('Fetch error for', url, e);
+    }
+  }
 
   updateGameDayBanner();
 
