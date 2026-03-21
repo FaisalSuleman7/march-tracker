@@ -377,6 +377,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
       </div>
       <p style="font-family:var(--mono);font-size:10px;color:var(--muted);">MTeams.csv and WTeams.csv are in your Kaggle competition data — download them for 100% accurate matching</p>
       <p style="color:var(--green);margin-top:8px;font-family:var(--mono);font-size:11px;" id="file-status">Load your prediction CSV to begin</p>
+      <button onclick="clearCache()" style="margin-top:8px;background:transparent;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:4px;cursor:pointer;letter-spacing:1px;">✕ CLEAR CACHE</button>
     </div>
     <input type="file" id="file-pred"   accept=".csv" onchange="loadCSV(this.files[0],'pred')"   style="display:none">
     <input type="file" id="file-mteams" accept=".csv" onchange="loadCSV(this.files[0],'mteams')" style="display:none">
@@ -1448,6 +1449,8 @@ setInterval(async()=>{
   const data = await fetchLiveGames();
   renderLiveGames(parseESPN(data));
 }, 60000);
+// Restore analyzer files from localStorage after page loads
+setTimeout(restoreFromStorage, 2000);
 
 // ── Tab switching ─────────────────────────────────────────────────
 function switchTab(n){
@@ -1540,7 +1543,6 @@ function loadCSV(file, type){
     const header= lines[0].toLowerCase();
 
     if(type === 'mteams' || type === 'wteams' || header.includes('teamname')){
-      // Parse MTeams.csv or WTeams.csv — columns: TeamID, TeamName (+ possibly others)
       const cols = lines[0].split(',').map(c=>c.trim().toLowerCase());
       const idIdx   = cols.findIndex(c=>c.includes('teamid'));
       const nameIdx = cols.findIndex(c=>c.includes('teamname'));
@@ -1549,20 +1551,22 @@ function loadCSV(file, type){
         return;
       }
       const map = type==='wteams' ? teamMapW : teamMapM;
+      const saved = {};
       let count=0;
       for(const line of lines.slice(1)){
         const cols2=line.split(',');
         const id=parseInt(cols2[idIdx]);
         const name=(cols2[nameIdx]||'').trim().replace(/"/g,'');
-        if(id&&name){map[name]=id;count++;}
+        if(id&&name){map[name]=id;saved[name]=id;count++;}
       }
+      // Save to localStorage
+      try{ localStorage.setItem('march_'+type, JSON.stringify(saved)); }catch(e){}
       const statusEl=document.getElementById(type==='wteams'?'status-wteams':'status-mteams');
       if(statusEl){statusEl.textContent=`✅ ${count} teams loaded`;statusEl.style.color='var(--green)';}
-      aStatus(`Loaded ${count} team IDs from ${file.name}. ${Object.keys(aPredictions).length>0?'Re-running analysis...':''}`);
+      aStatus(`Loaded ${count} team IDs from ${file.name}.${Object.keys(aPredictions).length>0?' Re-running...':''}`);
       if(Object.keys(aPredictions).length>0) runAnalysis();
 
     } else {
-      // Parse prediction CSV — columns: ID, Pred
       aPredictions={};let count=0;
       for(const line of lines.slice(1)){
         const parts=line.split(',');
@@ -1570,6 +1574,11 @@ function loadCSV(file, type){
         const pred=parseFloat((parts[1]||'').trim());
         if(id&&!isNaN(pred)){aPredictions[id]=pred;count++;}
       }
+      // Save to localStorage (predictions are large — chunk if needed)
+      try{ localStorage.setItem('march_pred', JSON.stringify(aPredictions));
+           localStorage.setItem('march_pred_name', file.name);
+           localStorage.setItem('march_pred_count', count);
+      }catch(e){ console.warn('localStorage full, predictions not saved'); }
       const statusEl=document.getElementById('status-pred');
       if(statusEl){statusEl.textContent=`✅ ${count.toLocaleString()} predictions`;statusEl.style.color='var(--green)';}
       document.getElementById('file-status').textContent=`✅ Loaded ${count.toLocaleString()} predictions from ${file.name}`;
@@ -1582,6 +1591,42 @@ function loadCSV(file, type){
   reader.readAsText(file);
 }
 
+// Restore saved files from localStorage on page load
+function restoreFromStorage(){
+  try{
+    // Restore team maps
+    const savedM = localStorage.getItem('march_mteams');
+    const savedW = localStorage.getItem('march_wteams');
+    if(savedM){
+      const m=JSON.parse(savedM);
+      Object.assign(teamMapM,m);
+      const el=document.getElementById('status-mteams');
+      if(el){el.textContent=`✅ ${Object.keys(m).length} teams (cached)`;el.style.color='var(--green)';}
+    }
+    if(savedW){
+      const w=JSON.parse(savedW);
+      Object.assign(teamMapW,w);
+      const el=document.getElementById('status-wteams');
+      if(el){el.textContent=`✅ ${Object.keys(w).length} teams (cached)`;el.style.color='var(--green)';}
+    }
+    // Restore predictions
+    const savedPred = localStorage.getItem('march_pred');
+    const savedName = localStorage.getItem('march_pred_name') || 'submission_kaggle7.csv';
+    const savedCount = localStorage.getItem('march_pred_count') || '0';
+    if(savedPred){
+      aPredictions = JSON.parse(savedPred);
+      window._aResults = null; // force re-analysis
+      const statusEl=document.getElementById('status-pred');
+      if(statusEl){statusEl.textContent=`✅ ${parseInt(savedCount).toLocaleString()} predictions (cached)`;statusEl.style.color='var(--green)';}
+      document.getElementById('file-status').textContent=`✅ ${parseInt(savedCount).toLocaleString()} predictions from ${savedName} (cached — auto-restored)`;
+      document.getElementById('file-status').style.color='var(--green)';
+      document.getElementById('upload-zone').style.borderColor='var(--green)';
+      aStatus('Files restored from cache. Fetching latest game results...');
+      runAnalysis();
+    }
+  }catch(e){ console.warn('Storage restore error:', e); }
+}
+
 function handleDrop(e){
   e.preventDefault();
   document.getElementById('upload-zone').classList.remove('drag');
@@ -1592,6 +1637,26 @@ function handleDrop(e){
     else if(name.includes('wteam')) loadCSV(file,'wteams');
     else loadCSV(file,'pred');
   }
+}
+
+function clearCache(){
+  try{
+    ['march_pred','march_pred_name','march_pred_count','march_mteams','march_wteams']
+      .forEach(k=>localStorage.removeItem(k));
+  }catch(e){}
+  aPredictions={};aResults=[];window._aResults=null;
+  teamMapM={...TEAM_IDS_M};teamMapW={...TEAM_IDS_W};aScoreLog=[];
+  ['status-pred','status-mteams','status-wteams'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent='⬆ click to upload';el.style.color='';}
+  });
+  document.getElementById('file-status').textContent='Load your prediction CSV to begin';
+  document.getElementById('file-status').style.color='';
+  document.getElementById('upload-zone').style.borderColor='';
+  document.getElementById('status-bar').style.display='none';
+  ['a-stats-row','a-charts-row','a-split-row','a-games-panel','a-log-panel']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  aStatus('Cache cleared. Upload your files again.');
 }
 
 function getTeamID(name, gender){
