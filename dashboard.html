@@ -350,16 +350,38 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
   <!-- TAB 2: Prediction Analyzer -->
   <div id="tab2" class="tab-content">
 
-    <div id="upload-zone" onclick="document.getElementById('file-input').click()"
+    <div id="upload-zone"
          ondragover="event.preventDefault();this.classList.add('drag')"
          ondragleave="this.classList.remove('drag')"
          ondrop="handleDrop(event)">
-      <h3>📁 DROP YOUR PREDICTION CSV HERE</h3>
-      <p>Drop <code style="background:var(--surface);padding:2px 6px;border-radius:3px;color:var(--orange);">submission_kaggle7.csv</code> or click to browse</p>
-      <p style="margin-top:6px;">Format: <code style="background:var(--surface);padding:2px 6px;border-radius:3px;color:var(--orange);">ID,Pred</code> — ID = <code style="background:var(--surface);padding:2px 6px;border-radius:3px;color:var(--orange);">2026_1101_1102</code> · Pred = P(lower TeamID wins)</p>
-      <p style="color:var(--green);margin-top:10px;font-family:var(--mono);font-size:11px;" id="file-status">No file loaded yet</p>
+      <h3>📁 DROP FILES HERE</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0;">
+        <div onclick="document.getElementById('file-pred').click()" style="border:1px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--purple)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Required</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--orange);">submission_kaggle7.csv</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">Your predictions</div>
+          <div style="font-family:var(--mono);font-size:10px;margin-top:6px;" id="status-pred">⬆ click to upload</div>
+        </div>
+        <div onclick="document.getElementById('file-mteams').click()" style="border:1px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Recommended</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--blue);">MTeams.csv</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">Men's team IDs · from Kaggle data</div>
+          <div style="font-family:var(--mono);font-size:10px;margin-top:6px;" id="status-mteams">⬆ click to upload</div>
+        </div>
+        <div onclick="document.getElementById('file-wteams').click()" style="border:1px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Recommended</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--blue);">WTeams.csv</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">Women's team IDs · from Kaggle data</div>
+          <div style="font-family:var(--mono);font-size:10px;margin-top:6px;" id="status-wteams">⬆ click to upload</div>
+        </div>
+      </div>
+      <p style="font-family:var(--mono);font-size:10px;color:var(--muted);">MTeams.csv and WTeams.csv are in your Kaggle competition data — download them for 100% accurate matching</p>
+      <p style="color:var(--green);margin-top:8px;font-family:var(--mono);font-size:11px;" id="file-status">Load your prediction CSV to begin</p>
     </div>
-    <input type="file" id="file-input" accept=".csv" onchange="loadCSV(this.files[0])">
+    <input type="file" id="file-pred"   accept=".csv" onchange="loadCSV(this.files[0],'pred')"   style="display:none">
+    <input type="file" id="file-mteams" accept=".csv" onchange="loadCSV(this.files[0],'mteams')" style="display:none">
+    <input type="file" id="file-wteams" accept=".csv" onchange="loadCSV(this.files[0],'wteams')" style="display:none">
+    <input type="file" id="file-input"  accept=".csv" onchange="loadCSV(this.files[0],'pred')"   style="display:none">
 
     <div id="status-bar"></div>
 
@@ -1411,53 +1433,103 @@ function switchTab(n){
 let aPredictions={},aResults=[],cBrier=null,cDist=null;
 
 const TEAM_IDS_M={
+  // Major teams
   'Duke':1181,'Kentucky':1246,'Houston':1220,'Florida':1196,'Auburn':1116,
-  'Iowa St':1233,'Tennessee':1397,'Michigan St':1277,'Texas Tech':1400,
-  'Arizona':1112,'Alabama':1102,'Purdue':1340,'Kansas':1242,'UConn':1163,
-  'Connecticut':1163,'Villanova':1437,'Gonzaga':1211,'Virginia':1438,
-  'Michigan':1276,'Maryland':1266,'UCLA':1420,'Illinois':1224,'Arkansas':1109,
-  'Iowa':1231,'Texas':1399,'Nebraska':1291,'Utah St':1427,'Oregon':1316,
-  'Clemson':1161,'NC State':1303,'Washington':1447,'Baylor':1124,
-  'Colorado St':1166,'Virginia Tech':1439,'Louisville':1262,'TCU':1396,
+  'Iowa St':1233,'Iowa State':1233,'Tennessee':1397,'Michigan St':1277,
+  'Michigan State':1277,'Texas Tech':1400,'Arizona':1112,'Alabama':1102,
+  'Purdue':1340,'Kansas':1242,'UConn':1163,'Connecticut':1163,
+  'Villanova':1437,'Gonzaga':1211,'Virginia':1438,'Michigan':1276,
+  'Maryland':1266,'UCLA':1420,'Illinois':1224,'Arkansas':1109,
+  'Iowa':1231,'Texas':1399,'Nebraska':1291,'Utah St':1427,'Utah State':1427,
+  'Oregon':1316,'Clemson':1161,'NC State':1303,'Washington':1447,
+  'Baylor':1124,'Colorado St':1166,'Colorado State':1166,
+  'Virginia Tech':1439,'Louisville':1262,'TCU':1396,
   'Texas A&M':1398,'VCU':1432,'Vanderbilt':1435,'Dayton':1173,
   'Nevada':1295,'Liberty':1259,'Georgia':1203,'South Carolina':1371,
-  'Notre Dame':1313,'Southern':1384,'James Madison':1237,'Fairfield':1191,
-  'Rhode Island':1348,'Murray St':1286,'S Dakota St':1356,'Akron':1103,
-  'Missouri':1282,'Cal Baptist':1140,'Furman':1199,'High Point':1218,
-  'Queens':1343,'Miami FL':1272,'Miami (FL)':1272,'GW':1207,
+  'Notre Dame':1313,'Southern':1384,'James Madison':1237,
+  'Fairfield':1191,'Rhode Island':1348,'Murray St':1286,'Murray State':1286,
+  'S Dakota St':1356,'South Dakota St':1356,'South Dakota State':1356,
+  'Akron':1103,'Missouri':1282,'Cal Baptist':1140,'California Baptist':1140,
+  'Furman':1199,'High Point':1218,'Queens':1343,'Miami':1272,'Miami FL':1272,
+  'Miami (FL)':1272,'GW':1207,'George Washington':1207,
   'New Mexico':1299,'Oklahoma St':1317,'Okla St':1317,'Cal':1139,
-  'UNCW':1414,'Northern Iowa':1307,'UCF':1415,'SJU':1390,
-  'St. John\'s':1390,'Wichita St':1451,'UNLV':1423,
+  'UNCW':1414,'UNC Wilmington':1414,'Northern Iowa':1307,'UCF':1415,
+  'St. Johns':1390,'SJU':1390,'Wichita St':1451,'UNLV':1423,
+  'Wright St':1463,'Wright State':1463,'Prairie View':1332,
+  'LIU':1258,'Santa Clara':1366,'Hofstra':1219,
+  // CRITICAL: exact names to avoid fuzzy mismatch
+  'Tennessee St':1394,'Tennessee State':1394,  // NOT Tennessee (1397)
+  'S Florida':1378,'South Florida':1378,        // NOT Florida (1196)
+  'Queens Univ':1343,
 };
 const TEAM_IDS_W={
   'South Carolina':3417,'UConn':3163,'Texas':3400,'Tennessee':3397,
   'Notre Dame':3313,'Stanford':3390,'NC State':3303,'Maryland':3266,
-  'Oregon':3316,'Texas Tech':3400,'Virginia Tech':3439,'LSU':3263,
-  'Iowa':3231,'UCLA':3420,'Washington':3447,'Baylor':3124,
-  'Michigan St':3277,'Colorado St':3166,'Gonzaga':3211,'Murray St':3286,
-  'S Dakota St':3356,'Nebraska':3291,'Virginia':3438,'Georgia':3203,
-  'Alabama':3102,'Rhode Island':3348,'Fairfield':3191,'UTSA':3428,
-  'Kentucky':3246,'Villanova':3437,'Michigan':3276,'Arizona':3112,
-  'Ole Miss':3314,'Maryland':3266,'Ole Miss':3314,
+  'Oregon':3316,'Virginia Tech':3439,'LSU':3263,'Iowa':3231,
+  'UCLA':3420,'Washington':3447,'Baylor':3124,'Michigan St':3277,
+  'Michigan State':3277,'Colorado St':3166,'Colorado State':3166,
+  'Gonzaga':3211,'Murray St':3286,'Murray State':3286,
+  'S Dakota St':3356,'South Dakota St':3356,'South Dakota State':3356,
+  'Nebraska':3291,'Virginia':3438,'Georgia':3203,'Alabama':3102,
+  'Rhode Island':3348,'Fairfield':3191,'UTSA':3428,'Kentucky':3246,
+  'Villanova':3437,'Michigan':3276,'Arizona':3112,'Ole Miss':3314,
+  'Texas Tech':3400,'Colorado':3164,
+  'Tennessee St':3394,'Tennessee State':3394,  // NOT Tennessee
 };
 
 function aStatus(msg){const el=document.getElementById('status-bar');el.style.display='block';el.textContent='ℹ️ '+msg;}
 
-function loadCSV(file){
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const lines=e.target.result.trim().split('\n');
-    aPredictions={};let count=0;
-    for(const line of lines.slice(1)){
-      const[id,pred]=line.split(',');
-      if(id&&pred){aPredictions[id.trim()]=parseFloat(pred.trim());count++;}
+// Loaded team name→ID maps (built from MTeams.csv / WTeams.csv)
+let teamMapM = {...TEAM_IDS_M}; // start with hardcoded, override with CSV
+let teamMapW = {...TEAM_IDS_W};
+
+function loadCSV(file, type){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text  = e.target.result.trim();
+    const lines = text.split('\n');
+    const header= lines[0].toLowerCase();
+
+    if(type === 'mteams' || type === 'wteams' || header.includes('teamname')){
+      // Parse MTeams.csv or WTeams.csv — columns: TeamID, TeamName (+ possibly others)
+      const cols = lines[0].split(',').map(c=>c.trim().toLowerCase());
+      const idIdx   = cols.findIndex(c=>c.includes('teamid'));
+      const nameIdx = cols.findIndex(c=>c.includes('teamname'));
+      if(idIdx<0||nameIdx<0){
+        aStatus(`Could not parse ${file.name} — expected TeamID and TeamName columns`);
+        return;
+      }
+      const map = type==='wteams' ? teamMapW : teamMapM;
+      let count=0;
+      for(const line of lines.slice(1)){
+        const cols2=line.split(',');
+        const id=parseInt(cols2[idIdx]);
+        const name=(cols2[nameIdx]||'').trim().replace(/"/g,'');
+        if(id&&name){map[name]=id;count++;}
+      }
+      const statusEl=document.getElementById(type==='wteams'?'status-wteams':'status-mteams');
+      if(statusEl){statusEl.textContent=`✅ ${count} teams loaded`;statusEl.style.color='var(--green)';}
+      aStatus(`Loaded ${count} team IDs from ${file.name}. ${Object.keys(aPredictions).length>0?'Re-running analysis...':''}`);
+      if(Object.keys(aPredictions).length>0) runAnalysis();
+
+    } else {
+      // Parse prediction CSV — columns: ID, Pred
+      aPredictions={};let count=0;
+      for(const line of lines.slice(1)){
+        const parts=line.split(',');
+        const id=(parts[0]||'').trim();
+        const pred=parseFloat((parts[1]||'').trim());
+        if(id&&!isNaN(pred)){aPredictions[id]=pred;count++;}
+      }
+      const statusEl=document.getElementById('status-pred');
+      if(statusEl){statusEl.textContent=`✅ ${count.toLocaleString()} predictions`;statusEl.style.color='var(--green)';}
+      document.getElementById('file-status').textContent=`✅ Loaded ${count.toLocaleString()} predictions from ${file.name}`;
+      document.getElementById('file-status').style.color='var(--green)';
+      document.getElementById('upload-zone').style.borderColor='var(--green)';
+      aStatus(`Loaded ${count.toLocaleString()} predictions. Fetching game results...`);
+      runAnalysis();
     }
-    document.getElementById('file-status').textContent=`✅ Loaded ${count.toLocaleString()} predictions from ${file.name}`;
-    document.getElementById('file-status').style.color='var(--green)';
-    document.getElementById('upload-zone').style.borderColor='var(--green)';
-    aStatus(`Loaded ${count.toLocaleString()} predictions. Fetching game results...`);
-    runAnalysis();
   };
   reader.readAsText(file);
 }
@@ -1465,17 +1537,44 @@ function loadCSV(file){
 function handleDrop(e){
   e.preventDefault();
   document.getElementById('upload-zone').classList.remove('drag');
-  const file=e.dataTransfer.files[0];
-  if(file)loadCSV(file);
+  const files=[...e.dataTransfer.files];
+  for(const file of files){
+    const name=file.name.toLowerCase();
+    if(name.includes('mteam')) loadCSV(file,'mteams');
+    else if(name.includes('wteam')) loadCSV(file,'wteams');
+    else loadCSV(file,'pred');
+  }
 }
 
-function getTeamID(name,gender){
-  const map=gender==='♀'?TEAM_IDS_W:TEAM_IDS_M;
-  if(map[name])return map[name];
-  for(const[k,v]of Object.entries(map)){
-    if(name&&k&&(name.toLowerCase().includes(k.toLowerCase())||k.toLowerCase().includes(name.toLowerCase())))return v;
+function getTeamID(name, gender){
+  if(!name) return null;
+  const map = gender==='♀' ? teamMapW : teamMapM;
+  const nameLo = name.toLowerCase().trim();
+
+  // 1. Exact match
+  if(map[name]) return map[name];
+
+  // 2. Case-insensitive exact match
+  for(const[k,v] of Object.entries(map)){
+    if(k.toLowerCase()===nameLo) return v;
   }
-  return null;
+
+  // 3. Substring match (ESPN short names vs full names)
+  for(const[k,v] of Object.entries(map)){
+    const kLo=k.toLowerCase();
+    if(nameLo.includes(kLo)||kLo.includes(nameLo)) return v;
+  }
+
+  // 4. Word overlap match (e.g. "Iowa St" matches "Iowa State")
+  const nameWords=nameLo.split(/\s+/).filter(w=>w.length>2);
+  let bestMatch=null, bestScore=0;
+  for(const[k,v] of Object.entries(map)){
+    const kWords=k.toLowerCase().split(/\s+/).filter(w=>w.length>2);
+    const overlap=nameWords.filter(w=>kWords.some(kw=>kw.startsWith(w)||w.startsWith(kw))).length;
+    const score=overlap/(Math.max(nameWords.length,kWords.length)||1);
+    if(score>bestScore&&score>=0.6){bestScore=score;bestMatch=v;}
+  }
+  return bestMatch;
 }
 
 async function runAnalysis(){
@@ -1484,11 +1583,13 @@ async function runAnalysis(){
   const raw=await fetchLiveGames();
   const parsed=parseESPN(raw);
   const scored=[];let matched=0,unmatched=0;
+  const unmatchedTeams=new Set();
 
   for(const g of parsed.games.filter(x=>x.completed)){
     const homeID=getTeamID(g.homeTeam,g.gender);
     const awayID=getTeamID(g.awayTeam,g.gender);
-    if(!homeID||!awayID){unmatched++;continue;}
+    if(!homeID){unmatchedTeams.add(`${g.gender} ${g.homeTeam}`);unmatched++;continue;}
+    if(!awayID){unmatchedTeams.add(`${g.gender} ${g.awayTeam}`);unmatched++;continue;}
     const lo=Math.min(homeID,awayID),hi=Math.max(homeID,awayID);
     const key=`2026_${lo}_${hi}`;
     const pred=aPredictions[key];
@@ -1508,7 +1609,8 @@ async function runAnalysis(){
     matched++;
   }
 
-  aStatus(`Matched ${matched} games · ${unmatched} unmatched · refreshes every 2 min`);
+  const unmatchedList=[...unmatchedTeams].join(', ');
+  aStatus(`Matched ${matched} games · ${unmatched} unmatched${unmatchedList?` (${unmatchedList})`:''} · Upload MTeams.csv + WTeams.csv for better matching · refreshes every 2 min`);
   if(!scored.length)return;
   aResults=scored;
   renderAnalysis();
