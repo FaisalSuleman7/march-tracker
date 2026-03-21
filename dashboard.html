@@ -1669,6 +1669,7 @@ async function runAnalysis(){
 let aScoreLog = [];
 
 function renderAnalysis(){
+  try{
   const R=aResults;if(!R.length)return;
   const totalBrier=R.reduce((s,g)=>s+g.brier,0)/R.length;
   const correct=R.filter(g=>g.predictedCorrectly).length;
@@ -1720,14 +1721,16 @@ function renderAnalysis(){
   const timeStr = `${now.getUTCFullYear()}-${p(now.getUTCMonth()+1)}-${p(now.getUTCDate())} ${p(now.getUTCHours())}:${p(now.getUTCMinutes())}`;
 
   // Only log if this exact game count hasn't been logged before
-  const alreadyLogged = aScoreLog.some(e=>!e._fromHistory && e.myGames===myGames && e.myBrier===totalBrier);
-  const kaggleChanged = aScoreLog.length && aScoreLog.filter(e=>!e._fromHistory).some(e=>e.kaggleBrier!==kaggleBrier);
+  const liveLogs = aScoreLog.filter(e=>!e._fromHistory);
+  const lastLiveLog = liveLogs[liveLogs.length-1] || null;
+  const alreadyLogged = liveLogs.some(e=>e.myGames===myGames && e.myBrier===totalBrier);
+  const kaggleChanged = lastLiveLog && lastLiveLog.kaggleBrier !== kaggleBrier;
+
   if(!alreadyLogged || kaggleChanged){
-    // Detect if Kaggle score itself changed since last log
     let kaggleNote = '';
-    if(lastLog && lastLog.kaggleBrier !== kaggleBrier){
-      const kDiff = kaggleBrier - lastLog.kaggleBrier;
-      kaggleNote = ` | Kaggle updated: ${fmt(lastLog.kaggleBrier,5)} → ${fmt(kaggleBrier,5)} (${kDiff>0?'+':''}${fmt(kDiff,5)})`;
+    if(lastLiveLog && lastLiveLog.kaggleBrier !== kaggleBrier){
+      const kDiff = kaggleBrier - lastLiveLog.kaggleBrier;
+      kaggleNote = ` | Kaggle updated: ${fmt(lastLiveLog.kaggleBrier,5)} -> ${fmt(kaggleBrier,5)} (${kDiff>0?'+':''}${fmt(kDiff,5)})`;
     }
 
     aScoreLog.push({
@@ -1737,15 +1740,15 @@ function renderAnalysis(){
       kaggleAtMyGames: (kaggleGames===myGames) ? kaggleBrier : null,
       diff: (kaggleGames===myGames) ? diff : null,
       note: (myGames>kaggleGames
-        ? `you: ${myGames} games · Kaggle: ${kaggleGames} -- you're ${gameGap} ahead`
+        ? `you: ${myGames} games, Kaggle: ${kaggleGames} -- you're ${gameGap} ahead`
         : myGames===kaggleGames
         ? `same count (${myGames}) -- diff = ${(diff>0?'+':'')+fmt(diff,5)}`
-        : `you: ${myGames} · Kaggle: ${kaggleGames}`) + kaggleNote
+        : `you: ${myGames}, Kaggle: ${kaggleGames}`) + kaggleNote
     });
 
     // Back-fill kaggleAtMyGames for older entries when Kaggle catches up
     for(const entry of aScoreLog){
-      if(entry.kaggleAtMyGames===null && entry.myGames===kaggleGames){
+      if(!entry._fromHistory && entry.kaggleAtMyGames===null && entry.myGames===kaggleGames){
         entry.kaggleAtMyGames = kaggleBrier;
         entry.diff = entry.myBrier - kaggleBrier;
         entry.note = `Kaggle reached ${kaggleGames} games -- diff = ${(entry.diff>0?'+':'')+fmt(entry.diff,5)}`;
@@ -1754,39 +1757,31 @@ function renderAnalysis(){
   }
 
   // Pre-populate historical Kaggle score changes from snapshot data
-  // This shows the 0.19841 -> 0.19538 change that already happened
-  if(aScoreLog.length === 0 || aScoreLog[0]._fromHistory) {
-    // Build log from historical snapshots
+  const hasHistEntries = aScoreLog.some(e=>e._fromHistory);
+  if(!hasHistEntries){
     const histSnaps = (window._lastHistory && window._lastHistory.snapshots)
       ? [...window._lastHistory.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))
       : [];
-    let prevScore = null;
+    let prevScore2 = null;
     const histLog = [];
     for(const s of histSnaps){
-      if(s.score !== prevScore){
-        const d = new Date(new Date(s.timestamp).getTime()+60*60*1000);
-        const p = n=>String(n).padStart(2,'0');
-        const t = `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+      if(s.score !== prevScore2){
+        const dd = new Date(new Date(s.timestamp).getTime()+60*60*1000);
+        const pad = n=>String(n).padStart(2,'0');
+        const t = `${dd.getUTCFullYear()}-${pad(dd.getUTCMonth()+1)}-${pad(dd.getUTCDate())} ${pad(dd.getUTCHours())}:${pad(dd.getUTCMinutes())}`;
         histLog.push({
-          _fromHistory: true,
-          time: t,
-          myGames: null,
-          myBrier: null,
+          _fromHistory: true, time: t,
+          myGames: null, myBrier: null,
           kaggleGames: s.games_scored ? s.games_scored*2 : null,
-          kaggleBrier: s.score,
-          kaggleAtMyGames: null,
-          diff: null,
-          note: prevScore
-            ? `Kaggle rescored: ${fmt(prevScore,5)} --> ${fmt(s.score,5)} (${s.score<prevScore?'improved':'worsened'})`
+          kaggleBrier: s.score, kaggleAtMyGames: null, diff: null,
+          note: prevScore2
+            ? `Kaggle rescored: ${fmt(prevScore2,5)} -> ${fmt(s.score,5)} (${s.score<prevScore2?'improved':'worsened'})`
             : `First Kaggle score recorded`
         });
-        prevScore = s.score;
+        prevScore2 = s.score;
       }
     }
-    // Only add history entries if we haven't yet
-    if(aScoreLog.length===0 || aScoreLog[0]._fromHistory){
-      aScoreLog = [...histLog, ...aScoreLog.filter(e=>!e._fromHistory)];
-    }
+    aScoreLog = [...histLog, ...aScoreLog.filter(e=>!e._fromHistory)];
   }
 
   // Render log table — newest first
@@ -1865,6 +1860,11 @@ function renderAnalysis(){
   // Only render charts if tab 2 is currently visible, otherwise they'll render on tab switch
   const tab2visible = document.getElementById('tab2').classList.contains('active');
   if(typeof Chart!=='undefined' && tab2visible) renderACharts();
+  }catch(err){
+    console.error('renderAnalysis error:', err);
+    const sb=document.getElementById('status-bar');
+    if(sb){sb.style.display='block';sb.textContent='Error: '+err.message+' — check browser console';}
+  }
 }
 
 function renderACharts(){
