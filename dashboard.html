@@ -239,7 +239,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
       <div class="pb">
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
           <span style="font-family:var(--display);font-size:52px;color:var(--orange);" id="games-count">—</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--muted);">/ 63</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--muted);">/ 126</span>
         </div>
         <div style="background:var(--border);border-radius:6px;height:12px;overflow:hidden;margin-bottom:8px;">
           <div id="games-bar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,var(--orange),var(--yellow));transition:width .8s ease;width:0%;"></div>
@@ -251,8 +251,8 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
 
     <div class="panel">
       <div class="ph">
-        <span class="pt">🏀 Live Tournament Scores</span>
-        <span class="ps">real-time via ESPN · auto-refreshes</span>
+        <span class="pt">🏀 Live Scores — Men's ♂ & Women's ♀</span>
+        <span class="ps">real-time via ESPN · ♂ men · ♀ women</span>
       </div>
       <div style="max-height:280px;overflow-y:auto;" id="live-games-list">
         <div class="empty">Loading live scores...</div>
@@ -326,75 +326,63 @@ const ROUNDS = [
   {name:'Final Four',           dates:'Apr 5',     start:'2026-04-05', end:'2026-04-05', games:2,  color:'#eab308'},
   {name:'Championship',         dates:'Apr 6',     start:'2026-04-06', end:'2026-04-06', games:1,  color:'#22c55e'},
 ];
-const TOTAL_GAMES = 63;
-
-// ── helpers ──────────────────────────────────────────────────────
-function fmt(n,dp){if(n==null||n===undefined)return'—';return Number(n).toFixed(dp!=null?dp:5);}
-function fmtInt(n){if(n==null)return'—';return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,',');}
-function toLocal(s){
-  if(s.timestamp_local)return s.timestamp_local.replace(' local','');
-  if(s.timestamp){try{
-    const d=new Date(new Date(s.timestamp).getTime()+60*60*1000);
-    const p=n=>String(n).padStart(2,'0');
-    return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate())+' '+p(d.getUTCHours())+':'+p(d.getUTCMinutes());
-  }catch(e){}}
-  return'—';
-}
-function subLabel(s){
-  if(s.version&&s.version!=='?')return s.version;
-  const f=(s.file||'').replace('submission_kaggle','v').replace('submission','sub');
-  return f.replace('.csv','');
-}
-function set(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
-function setH(id,v){const e=document.getElementById(id);if(e)e.innerHTML=v;}
-function sortedSnaps(h){return[...h.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));}
+const TOTAL_GAMES = 126; // 63 men's + 63 women's NCAA tournament games
 
 // ── Live Games Data ───────────────────────────────────────────────
-// Fetches real NCAA game data from a public API proxy
 let liveGamesCache = null;
 let liveGamesLastFetch = 0;
 
 async function fetchLiveGames(){
-  // Cache for 2 minutes to avoid hammering API
   if(liveGamesCache && Date.now()-liveGamesLastFetch < 120000) return liveGamesCache;
   try{
-    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?limit=100&groups=100&dates=20260320-20260323');
-    if(!r.ok) return null;
-    const data = await r.json();
-    liveGamesCache = data;
+    // Fetch BOTH men's and women's — Kaggle scores both tournaments
+    const [menRes, womenRes] = await Promise.all([
+      fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?limit=100&groups=100&dates=20260319-20260407'),
+      fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?limit=100&groups=100&dates=20260319-20260408')
+    ]);
+    const menData   = menRes.ok   ? await menRes.json()   : null;
+    const womenData = womenRes.ok ? await womenRes.json() : null;
+    liveGamesCache = {men: menData, women: womenData};
     liveGamesLastFetch = Date.now();
-    return data;
-  }catch(e){
-    return null;
-  }
+    return liveGamesCache;
+  }catch(e){ return null; }
 }
 
 function parseESPN(data){
-  if(!data||!data.events) return {completed:0,inProgress:[],scheduled:[],games:[]};
-  const games = data.events.map(e=>{
-    const comp   = e.competitions&&e.competitions[0];
-    const status = e.status&&e.status.type;
-    const home   = comp&&comp.competitors&&comp.competitors.find(c=>c.homeAway==='home');
-    const away   = comp&&comp.competitors&&comp.competitors.find(c=>c.homeAway==='away');
-    return{
-      id        : e.id,
-      name      : e.name||e.shortName,
-      status    : status&&status.name,       // STATUS_IN_PROGRESS, STATUS_FINAL, STATUS_SCHEDULED
-      completed : status&&status.completed,
-      homeTeam  : home&&home.team&&home.team.shortDisplayName,
-      awayTeam  : away&&away.team&&away.team.shortDisplayName,
-      homeScore : home&&home.score,
-      awayScore : away&&away.score,
-      clock     : e.status&&e.status.displayClock,
-      period    : e.status&&e.status.period,
-      startTime : e.date,
-    };
-  });
+  if(!data) return {completed:0,inProgress:[],scheduled:[],games:[],menCompleted:0,womenCompleted:0};
+
+  const parseEvents = (d, gender) => {
+    if(!d||!d.events) return [];
+    return d.events.map(e=>{
+      const comp   = e.competitions&&e.competitions[0];
+      const status = e.status&&e.status.type;
+      const home   = comp&&comp.competitors&&comp.competitors.find(c=>c.homeAway==='home');
+      const away   = comp&&comp.competitors&&comp.competitors.find(c=>c.homeAway==='away');
+      return{
+        id       : e.id, gender,
+        status   : status&&status.name,
+        completed: status&&status.completed,
+        homeTeam : home&&home.team&&home.team.shortDisplayName,
+        awayTeam : away&&away.team&&away.team.shortDisplayName,
+        homeScore: home&&home.score,
+        awayScore: away&&away.score,
+        clock    : e.status&&e.status.displayClock,
+        period   : e.status&&e.status.period,
+        startTime: e.date,
+      };
+    });
+  };
+
+  const men   = parseEvents(data.men,   '♂');
+  const women = parseEvents(data.women, '♀');
+  const all   = [...men, ...women];
   return{
-    completed  : games.filter(g=>g.completed).length,
-    inProgress : games.filter(g=>g.status==='STATUS_IN_PROGRESS'),
-    scheduled  : games.filter(g=>g.status==='STATUS_SCHEDULED'),
-    games,
+    completed     : all.filter(g=>g.completed).length,
+    inProgress    : all.filter(g=>g.status==='STATUS_IN_PROGRESS'),
+    scheduled     : all.filter(g=>g.status==='STATUS_SCHEDULED'),
+    menCompleted  : men.filter(g=>g.completed).length,
+    womenCompleted: women.filter(g=>g.completed).length,
+    games         : all,
   };
 }
 
@@ -406,29 +394,33 @@ async function renderGamesScored(snaps){
 
   // Use live count if available, else fall back to snapshot estimate
   const last   = snaps[snaps.length-1];
-  let games    = live.completed > 0 ? live.completed : (last&&last.games_scored!=null?last.games_scored:estimateGamesFromDate());
+  let games    = live.completed > 0 ? live.completed : (last&&last.games_scored!=null?last.games_scored*2:estimateGamesFromDate()*2);
   const source = live.completed > 0 ? '🔴 LIVE from ESPN' : '📊 estimated';
-  const pct    = Math.round((games/63)*100);
+  const pct    = Math.round((games/126)*100);
+  const splitInfo = live.menCompleted>0 ? ` · ♂ ${live.menCompleted}/63 men · ♀ ${live.womenCompleted}/63 women` : '';
 
   set('games-count', games);
   document.getElementById('games-bar').style.width = pct+'%';
-  set('games-sub', `${pct}% scored · ${source}`);
+  set('games-sub', `${pct}% scored · ${source}${splitInfo}`);
 
-  const stability = games===0  ? 'No games scored yet — leaderboard will be volatile'
-                  : games<16   ? 'Early stages — leaderboard very volatile, expect big swings'
-                  : games<32   ? 'Round 1 in progress — leaderboard stabilising'
-                  : games<48   ? 'Round 2 complete — scores becoming more reliable'
-                  : games<57   ? 'Sweet 16 + Elite 8 done — leaderboard quite stable'
-                  : games<62   ? 'Final Four done — nearly final'
-                  : games===63 ? '🏆 All 63 games scored — FINAL LEADERBOARD'
+  const stability = games===0   ? 'No games scored yet — leaderboard will be volatile'
+                  : games<32    ? 'Early stages — leaderboard very volatile, expect big swings'
+                  : games<64    ? 'Round 1 in progress — leaderboard stabilising'
+                  : games<96    ? 'Round 2 complete — scores becoming more reliable'
+                  : games<114   ? 'Sweet 16 + Elite 8 done — leaderboard quite stable'
+                  : games<124   ? 'Final Four done — nearly final'
+                  : games>=126  ? '🏆 All 126 games scored — FINAL LEADERBOARD'
                   : 'Championship week — nearly settled';
   set('games-stability', stability);
 
-  // Mini round progress bars
+  // Mini round progress bars — each round has men's + women's games
   const ROUNDS_MINI=[
-    {name:'R1',games:32,end:'2026-03-23'},{name:'R2',games:16,end:'2026-03-23'},
-    {name:'S16',games:8,end:'2026-03-28'},{name:'E8',games:4,end:'2026-03-30'},
-    {name:'F4',games:2,end:'2026-04-05'},{name:'🏆',games:1,end:'2026-04-06'},
+    {name:'R1', games:64, end:'2026-03-23'},  // 32 men + 32 women
+    {name:'R2', games:32, end:'2026-03-23'},  // 16 + 16
+    {name:'S16',games:16, end:'2026-03-28'},  // 8 + 8
+    {name:'E8', games:8,  end:'2026-03-30'},  // 4 + 4
+    {name:'F4', games:4,  end:'2026-04-05'},  // 2 + 2
+    {name:'🏆', games:2,  end:'2026-04-07'},  // 1 + 1
   ];
   let cum=0;
   document.getElementById('rounds-mini').innerHTML=ROUNDS_MINI.map(r=>{
