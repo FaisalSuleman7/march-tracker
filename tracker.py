@@ -69,9 +69,19 @@ SUBMISSION_META = {
 # ── Credentials ─────────────────────────────────────────────────
 
 def load_creds():
+    # First try environment variables (GitHub Actions)
+    env_user = os.environ.get('KAGGLE_USERNAME', '').strip()
+    env_key  = os.environ.get('KAGGLE_KEY', '').strip()
+    if env_user and env_key:
+        print(f"✅ Credentials from environment — username: {env_user}")
+        return env_user, env_key
+
+    # Fall back to kaggle.json file (local PC)
     local = Path('kaggle.json')
     if not local.exists():
         print("❌ kaggle.json not found in this folder.")
+        print("   For GitHub Actions: add KAGGLE_USERNAME and KAGGLE_KEY as repository secrets")
+        print("   For local use: create kaggle.json with {\"username\":\"...\",\"key\":\"...\"}")
         sys.exit(1)
     with open(local) as f:
         creds = json.load(f)
@@ -80,6 +90,7 @@ def load_creds():
     if not username or not key:
         print("❌ kaggle.json missing username or key.")
         sys.exit(1)
+    print(f"✅ Credentials from kaggle.json — username: {username}")
     return username, key
 
 
