@@ -63,6 +63,21 @@
   ],
   "snapshots": [
     {
+      "timestamp": "2026-03-21T10:22:52.687761+00:00",
+      "timestamp_readable": "2026-03-21 10:42 UTC",
+      "timestamp_local": "2026-03-21 11:22",
+      "rank": 3020,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": null,
+      "score": 0.19841,
+      "rank_change": null,
+      "score_change": null,
+      "top_score": 0.05861,
+      "top_team": "lookahead bias and pray",
+      "gap_to_top": 0.1398
+    },
+    {
       "timestamp": "2026-03-21T13:41:39.687761+00:00",
       "timestamp_readable": "2026-03-21 13:41 UTC",
       "timestamp_local": "2026-03-21 14:41",
