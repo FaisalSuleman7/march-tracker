@@ -337,7 +337,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
   <!-- History -->
   <div class="panel" style="margin-bottom:20px;">
     <div class="ph"><span class="pt">🕐 Snapshot History</span><span class="ps" id="snap-ct">0 snapshots</span></div>
-    <div style="padding:0 14px;max-height:260px;overflow-y:auto;" id="timeline"></div>
+    <div style="padding:0 14px;max-height:500px;overflow-y:auto;" id="timeline"></div>
   </div>
 
   <footer>
@@ -1326,14 +1326,17 @@ function renderSubs(h,snaps){
 // ── timeline ──────────────────────────────────────────────────────
 function renderTimeline(snaps){
   const el=document.getElementById('timeline');
-  const items=[...snaps].reverse().slice(0,30);
+  const reversed=[...snaps].reverse();
+  const LIMIT=50;
+  const items=reversed.slice(0,LIMIT);
   set('snap-ct',snaps.length+' snapshots');
   if(!items.length){el.innerHTML='<div class="empty">No snapshots yet</div>';return;}
   el.innerHTML=items.map(s=>{
     const c=s.rank_change;
     const sym=c==null?'<span class="tl-nc">—</span>':c<0?'<span class="tl-up">↑'+Math.abs(c)+'</span>':c>0?'<span class="tl-dn">↓'+c+'</span>':'<span class="tl-nc">→</span>';
     return'<div class="tl-item"><span class="tl-ts">'+toLocal(s)+'</span><span class="tl-r">'+(s.rank?'#'+fmtInt(s.rank):'—')+'</span><span>'+fmt(s.score,5)+'</span><span style="color:var(--muted)">'+fmt(s.top_score,5)+'</span><span>'+sym+'</span></div>';
-  }).join('');
+  }).join('')
+  +(reversed.length>LIMIT?`<div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:8px 0;text-align:center;">+ ${reversed.length-LIMIT} older snapshots not shown</div>`:'');
 }
 
 // ── chart defaults ────────────────────────────────────────────────
