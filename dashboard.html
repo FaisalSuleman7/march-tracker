@@ -1876,59 +1876,67 @@ function renderACharts(){
     running.push(parseFloat((sum/(i+1)).toFixed(5)));
   });
 
-  // Build Kaggle score history from snapshots — shows real changes not flat line
-  const kaggleSnaps = window._lastHistory
-    ? [...window._lastHistory.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))
-    : [];
+  // Build Kaggle score step function from history log
+  // e.g. G1-G48 = 0.19841, G49+ = 0.19538 (when Kaggle rescored)
+  const histEntries = [...aScoreLog]
+    .filter(e=>e._fromHistory && e.kaggleBrier!=null)
+    .sort((a,b)=>new Date(a.time)-new Date(b.time));
 
-  // Create a Kaggle score line that steps at each game count
-  // For each game G1..GN, find what Kaggle score was at roughly that point in time
-  // We use the most recent Kaggle score as a flat reference since we don't have per-game timestamps
-  // But show all distinct Kaggle scores as horizontal segments
-  const kaggleScores = [];
-  if(kaggleSnaps.length){
-    // Get unique score changes from snapshots
-    const scoreChanges = [];
-    let prev = null;
-    for(const s of kaggleSnaps){
-      if(s.score !== prev){
-        scoreChanges.push({score: s.score, games: s.games_scored ? s.games_scored*2 : 48});
-        prev = s.score;
-      }
+  const kaggleLine = labels.map((_,i)=>{
+    const gameNum = i+1;
+    // Find the most recent Kaggle score that was recorded at or before this game
+    let score = histEntries.length ? histEntries[0].kaggleBrier : 0.19538;
+    for(const entry of histEntries){
+      const entryGames = entry.kaggleGames || 48;
+      if(gameNum <= entryGames) { score = entry.kaggleBrier; break; }
+      score = entry.kaggleBrier;
     }
-    // Map each game index to the right Kaggle score based on games_scored
-    for(let i=0;i<labels.length;i++){
-      const gameNum = i+1;
-      // Find which Kaggle score was current when this game was scored
-      let score = scoreChanges[0] ? scoreChanges[0].score : 0.19538;
-      for(const change of scoreChanges){
-        if(gameNum <= change.games) { score = change.score; break; }
-        score = change.score;
-      }
-      kaggleScores.push(score);
-    }
-  } else {
-    labels.forEach(()=>kaggleScores.push(0.19538));
-  }
+    return score;
+  });
 
-  const latestKaggle = kaggleSnaps.length ? kaggleSnaps[kaggleSnaps.length-1].score : 0.19538;
-  const latestGames  = kaggleSnaps.length && kaggleSnaps[kaggleSnaps.length-1].games_scored
-    ? kaggleSnaps[kaggleSnaps.length-1].games_scored*2 : 48;
+  // Also add live log entries to show latest Kaggle score
+  const liveLogs = aScoreLog.filter(e=>!e._fromHistory && e.kaggleBrier);
+  const latestKaggle = liveLogs.length
+    ? liveLogs[liveLogs.length-1].kaggleBrier
+    : (histEntries.length ? histEntries[histEntries.length-1].kaggleBrier : 0.19538);
+  const latestGames = liveLogs.length
+    ? liveLogs[liveLogs.length-1].kaggleGames
+    : (histEntries.length ? histEntries[histEntries.length-1].kaggleGames : 48);
+
+  // Fill remaining games beyond Kaggle's count with latest score
+  const kaggleLineWithLatest = kaggleLine.map((v,i)=>{
+    if(i+1 > latestGames) return latestKaggle;
+    return v;
+  });
 
   const ctx1=document.getElementById('cBrier').getContext('2d');
   if(cBrier)cBrier.destroy();
   const gr=ctx1.createLinearGradient(0,0,0,220);
   gr.addColorStop(0,'rgba(139,92,246,.25)');gr.addColorStop(1,'rgba(139,92,246,.02)');
+
   cBrier=new Chart(ctx1,{type:'line',data:{labels,datasets:[
-    {label:'Your running Brier',data:running,borderColor:'#8b5cf6',backgroundColor:gr,
-     borderWidth:2.5,pointRadius:3,pointHoverRadius:6,tension:.4,fill:true},
-    {label:`Kaggle official (${fmt(latestKaggle,5)} @ ${latestGames} games)`,
-     data:kaggleScores,borderColor:'rgba(249,115,22,.8)',backgroundColor:'transparent',
-     borderWidth:2,borderDash:[5,4],pointRadius:0,stepped:'before'},
-  ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
+    {
+      label:'Your running Brier',
+      data:running,
+      borderColor:'#8b5cf6',backgroundColor:gr,
+      borderWidth:2.5,pointRadius:3,pointHoverRadius:6,
+      tension:.4,fill:true,order:1
+    },
+    {
+      label:`Kaggle official (${fmt(latestKaggle,5)} @ ${latestGames} games)`,
+      data:kaggleLineWithLatest,
+      borderColor:'rgba(249,115,22,.9)',
+      backgroundColor:'rgba(249,115,22,.08)',
+      borderWidth:2,borderDash:[6,3],
+      pointRadius:0,stepped:'before',
+      fill:false,order:2
+    },
+  ]},options:{
+    responsive:true,maintainAspectRatio:false,animation:{duration:400},
     plugins:{
       legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:9},boxWidth:10,padding:10}},
-      tooltip:{backgroundColor:'#0f1318',borderColor:'#1e2530',borderWidth:1,
+      tooltip:{
+        backgroundColor:'#0f1318',borderColor:'#1e2530',borderWidth:1,
         titleColor:'#475569',bodyColor:'#e2e8f0',
         titleFont:{family:'JetBrains Mono',size:9},bodyFont:{family:'JetBrains Mono',size:10},
         padding:8,mode:'index',intersect:false,
@@ -1937,19 +1945,29 @@ function renderACharts(){
           label:c=>`  ${c.dataset.label.split(' (')[0]}: ${fmt(c.raw,5)}`,
           afterBody:c=>{
             const i=c[0].dataIndex;
-            const diff=running[i]-kaggleScores[i];
-            return[`  diff: ${(diff>0?'+':'')+fmt(diff,5)}`];
+            if(running[i]!=null && kaggleLineWithLatest[i]!=null){
+              const d=running[i]-kaggleLineWithLatest[i];
+              return[`  diff: ${(d>0?'+':'')+fmt(d,5)}`];
+            }
+            return[];
           }
         }
-      }
+      },
+      // Annotation to mark Kaggle rescore points
     },
     scales:{
-      x:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:10},
-         grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}},
-      y:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:6},
-         grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
-         title:{display:true,text:'Brier Score (lower = better)',color:'#475569',font:{family:'JetBrains Mono',size:8}}}
-    }}});
+      x:{
+        ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:10},
+        grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
+        title:{display:true,text:'Games scored (G1 = first game)',color:'#475569',font:{family:'JetBrains Mono',size:8}}
+      },
+      y:{
+        ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:6},
+        grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
+        title:{display:true,text:'Brier Score (lower = better)',color:'#475569',font:{family:'JetBrains Mono',size:8}}
+      }
+    }
+  }});
 
   const bins=10,binData=Array(bins).fill(null).map(()=>({sum:0,count:0}));
   aResults.forEach(g=>{const b=Math.min(Math.floor(g.pred*bins),bins-1);binData[b].sum+=g.brier;binData[b].count++;});
