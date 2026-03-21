@@ -116,8 +116,22 @@ tr:hover td{background:rgba(249,115,22,.02);}
 .round-bar-fill{height:100%;border-radius:3px;}
 .round-status{font-size:9px;margin-top:3px;}
 
-/* warn */
-#warn{background:var(--card);border:1px solid var(--yellow);border-radius:12px;padding:18px 22px;margin-bottom:18px;font-family:var(--mono);font-size:12px;line-height:2;display:none;}
+/* top8 table */
+.top8-row{display:grid;grid-template-columns:30px 1fr 90px 70px;gap:8px;align-items:center;padding:8px 14px;border-bottom:1px solid rgba(30,37,48,.5);font-family:var(--mono);font-size:11px;}
+.top8-row:last-child{border-bottom:none;}
+.top8-row.you{background:rgba(34,197,94,.05);border-left:2px solid var(--green);}
+.top8-rank{color:var(--orange);font-weight:500;}
+.top8-name{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.top8-score{color:var(--blue);text-align:right;}
+.top8-trend{text-align:right;font-size:10px;}
+
+/* daily summary */
+.day-row{display:grid;grid-template-columns:110px 80px 80px 80px 80px 1fr;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(30,37,48,.5);font-family:var(--mono);font-size:11px;}
+.day-row:last-child{border-bottom:none;}
+.day-row.header{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 16px;background:var(--surface);}
+
+.pb-0{padding:0;}
+background:var(--card);border:1px solid var(--yellow);border-radius:12px;padding:18px 22px;margin-bottom:18px;font-family:var(--mono);font-size:12px;line-height:2;display:none;}
 #warn h3{color:var(--yellow);margin-bottom:6px;}
 
 /* footer */
@@ -202,8 +216,36 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
 
   </div>
 
-  <!-- Submissions -->
-  <div class="grid3">
+  <!-- Games Scored + Daily Summary + Top 8 -->
+  <div class="grid3" style="margin-bottom:14px;">
+
+    <div class="panel">
+      <div class="ph"><span class="pt">👑 Top 8 Leaderboard Tracker</span><span class="ps">consistency over time · who stays at top</span></div>
+      <div class="pb-0" id="top8-panel"></div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><span class="pt">🎮 Games Scored</span><span class="ps" id="games-sub">of 63 total tournament games</span></div>
+      <div class="pb">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
+          <span style="font-family:var(--display);font-size:52px;color:var(--orange);" id="games-count">—</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--muted);">/ 63</span>
+        </div>
+        <div style="background:var(--border);border-radius:6px;height:12px;overflow:hidden;margin-bottom:8px;">
+          <div id="games-bar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,var(--orange),var(--yellow));transition:width .8s ease;width:0%;"></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);" id="games-stability">—</div>
+        <div style="margin-top:14px;" id="rounds-mini"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Daily Summary -->
+  <div class="panel" style="margin-bottom:14px;">
+    <div class="ph"><span class="pt">📅 Daily Game Day Summaries</span><span class="ps">rank change per game day</span></div>
+    <div class="pb-0" id="daily-summary"></div>
+  </div>
     <div class="panel">
       <div class="ph"><span class="pt">📊 Submission Performance</span><span class="ps" id="sub-count">—</span></div>
       <div class="pb" id="sub-bars"></div>
@@ -266,7 +308,173 @@ function set(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function setH(id,v){const e=document.getElementById(id);if(e)e.innerHTML=v;}
 function sortedSnaps(h){return[...h.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));}
 
-// ── Game day detection ────────────────────────────────────────────
+// ── Games Scored ──────────────────────────────────────────────────
+function renderGamesScored(snaps){
+  const last  = snaps[snaps.length-1];
+  const games = last && last.games_scored != null ? last.games_scored : estimateGamesFromDate();
+  const pct   = Math.round((games/63)*100);
+
+  set('games-count', games);
+  document.getElementById('games-bar').style.width = pct + '%';
+
+  const stability = games === 0  ? 'No games scored yet — leaderboard will be volatile'
+                  : games < 16   ? 'Early stages — leaderboard very volatile, expect big swings'
+                  : games < 32   ? 'Round 1 complete — leaderboard stabilising'
+                  : games < 48   ? 'Round 2 complete — scores becoming more reliable'
+                  : games < 57   ? 'Sweet 16 + Elite 8 done — leaderboard quite stable'
+                  : games < 62   ? 'Final Four done — nearly final'
+                  : games === 63 ? '🏆 All 63 games scored — FINAL LEADERBOARD'
+                  : 'Championship week — nearly settled';
+  set('games-stability', stability);
+  set('games-sub', `${pct}% of tournament scored`);
+
+  // Mini round progress
+  const ROUNDS_MINI = [
+    {name:'R1', games:32, end:'2026-03-23'},
+    {name:'R2', games:16, end:'2026-03-23'},
+    {name:'S16',games:8,  end:'2026-03-28'},
+    {name:'E8', games:4,  end:'2026-03-30'},
+    {name:'F4', games:2,  end:'2026-04-05'},
+    {name:'🏆', games:1,  end:'2026-04-06'},
+  ];
+  let cumulative = 0;
+  document.getElementById('rounds-mini').innerHTML = ROUNDS_MINI.map(r=>{
+    cumulative += r.games;
+    const done  = games >= cumulative;
+    const partial = !done && games > cumulative - r.games;
+    const partPct = partial ? Math.round(((games-(cumulative-r.games))/r.games)*100) : 0;
+    const color = done ? 'var(--green)' : partial ? 'var(--orange)' : 'var(--border)';
+    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-family:var(--mono);font-size:10px;">
+      <span style="color:var(--muted);width:28px;">${r.name}</span>
+      <div style="flex:1;background:var(--border);border-radius:3px;height:6px;">
+        <div style="width:${done?100:partPct}%;height:100%;background:${color};border-radius:3px;"></div>
+      </div>
+      <span style="color:${done?'var(--green)':'var(--muted)'};width:30px;text-align:right;">${done?'✓':partial?partPct+'%':'—'}</span>
+    </div>`;
+  }).join('');
+}
+
+function estimateGamesFromDate(){
+  const today = new Date();
+  const schedule = [
+    ['2026-03-19',8],['2026-03-20',8],['2026-03-21',8],
+    ['2026-03-22',8],['2026-03-23',8],['2026-03-27',4],
+    ['2026-03-28',4],['2026-03-29',2],['2026-03-30',2],
+    ['2026-04-05',2],['2026-04-06',1],
+  ];
+  let g = 0;
+  for(const [d,n] of schedule){
+    if(new Date(d) <= today) g += n; else break;
+  }
+  return Math.min(g, 63);
+}
+
+// ── Top 8 Tracker ─────────────────────────────────────────────────
+function renderTop8(snaps, yourName){
+  const el = document.getElementById('top8-panel');
+  if(!snaps.length){ el.innerHTML='<div class="empty">No data yet</div>'; return; }
+
+  // Collect all unique top8 names seen across all snapshots
+  const nameSet = new Set();
+  snaps.forEach(s=>(s.top8||[]).forEach(t=>nameSet.add(t.name)));
+
+  // Add "you" to the mix
+  if(yourName) nameSet.add(yourName);
+
+  // For each name, build their rank history
+  const nameArr = [...nameSet];
+  const last    = snaps[snaps.length-1];
+  const lastTop8= last.top8 || [];
+
+  // Sort by current rank (top first), then you at your position
+  const rows = lastTop8.slice(0,8).map(t=>({
+    name   : t.name,
+    rank   : t.rank,
+    score  : t.score,
+    isYou  : false,
+    history: snaps.map(s=>(s.top8||[]).find(x=>x.name===t.name)||null),
+  }));
+
+  // Also add your own row if not in top 8
+  const yourSnap = last;
+  const youInTop8 = rows.find(r=>r.name.toLowerCase().includes((yourName||'').toLowerCase()));
+  if(!youInTop8 && yourName && yourSnap.rank){
+    rows.push({
+      name   : yourName + ' (you)',
+      rank   : yourSnap.rank,
+      score  : yourSnap.score,
+      isYou  : true,
+      history: snaps.map(s=>s.rank!=null?{rank:s.rank,score:s.score,name:yourName}:null),
+    });
+  }
+
+  rows.sort((a,b)=>(a.rank||9999)-(b.rank||9999));
+
+  // Show mini sparkline as rank change text
+  el.innerHTML = `
+    <div class="top8-row" style="background:var(--surface);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">
+      <span>#</span><span>Team</span><span style="text-align:right;">Score</span><span style="text-align:right;">Trend</span>
+    </div>
+    ${rows.map(r=>{
+      const hist   = r.history.filter(x=>x&&x.rank);
+      const first  = hist[0];
+      const prev   = hist[hist.length-2];
+      const curr   = hist[hist.length-1];
+      const change = curr && prev ? prev.rank - curr.rank : null; // positive = moved up
+      const trend  = change == null ? '—'
+                   : change > 0 ? `<span style="color:var(--green)">↑${change}</span>`
+                   : change < 0 ? `<span style="color:var(--red)">↓${Math.abs(change)}</span>`
+                   : '<span style="color:var(--muted)">→</span>';
+      const rankColor = r.rank<=3?'var(--yellow)':r.isYou?'var(--green)':'var(--orange)';
+      const medal = r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':'';
+      return `<div class="top8-row ${r.isYou?'you':''}">
+        <span class="top8-rank" style="color:${rankColor}">${medal||'#'+fmtInt(r.rank)}</span>
+        <span class="top8-name" title="${r.name}">${r.name}</span>
+        <span class="top8-score">${fmt(r.score,5)}</span>
+        <span class="top8-trend">${trend}</span>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ── Daily Summary ─────────────────────────────────────────────────
+function renderDailySummary(h){
+  const el       = document.getElementById('daily-summary');
+  const summaries= h.daily_summaries || {};
+  const days     = Object.keys(summaries).sort().reverse();
+
+  if(!days.length){
+    el.innerHTML='<div class="empty">No game day summaries yet — data builds up after the first full day</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="day-row header">
+      <span>Date</span>
+      <span>Start Rank</span>
+      <span>End Rank</span>
+      <span>Best Rank</span>
+      <span>Change</span>
+      <span>Notes</span>
+    </div>
+    ${days.map(day=>{
+      const d      = summaries[day];
+      const change = d.end_rank && d.start_rank ? d.start_rank - d.end_rank : null;
+      const chColor= change==null?'var(--muted)':change>0?'var(--green)':change<0?'var(--red)':'var(--muted)';
+      const chText = change==null?'—':change>0?`↑${change} places`:change<0?`↓${Math.abs(change)} places`:'→ no change';
+      const games  = d.games_scored != null ? `${d.games_scored}/63 games scored` : '';
+      const checks = `${d.checks} checks`;
+      return `<div class="day-row">
+        <span style="color:var(--orange)">${day}</span>
+        <span>${d.start_rank?'#'+fmtInt(d.start_rank):'—'}</span>
+        <span>${d.end_rank?'#'+fmtInt(d.end_rank):'—'}</span>
+        <span style="color:var(--green)">${d.best_rank?'#'+fmtInt(d.best_rank):'—'}</span>
+        <span style="color:${chColor}">${chText}</span>
+        <span style="color:var(--muted);font-size:10px;">${games} · ${checks}</span>
+      </div>`;
+    }).join('')}
+  `;
+}
 function updateGameDayBanner(){
   const now    = new Date();
   const nowStr = now.toISOString().slice(0,10);
@@ -491,6 +699,9 @@ async function load(){
   renderTimeline(snaps);
   renderRounds(snaps);
   renderHistogram(h,snaps);
+  renderGamesScored(snaps);
+  renderTop8(snaps, 'hmfaisal');
+  renderDailySummary(h);
 
   if(typeof Chart!=='undefined'){
     renderRankChart(snaps);
