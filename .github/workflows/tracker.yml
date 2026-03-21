@@ -2,7 +2,8 @@ name: March Mania Rank Tracker
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/30 14,15,16,17,18,19,20,21,22,23 * 3,4 *'  # every 30min 14-23 UTC (game hours)
+    - cron: '0 0,2,4,6,8,10,12 * 3,4 *'                    # every 2hrs overnight
   workflow_dispatch:
   push:
     branches: [main]
