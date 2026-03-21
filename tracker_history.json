@@ -2091,6 +2091,64 @@
           "score": 0.07863
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-21T21:06:35.075540+00:00",
+      "timestamp_readable": "2026-03-21 21:06 UTC",
+      "timestamp_local": "2026-03-21 22:06",
+      "rank": 3026,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 13.17,
+      "score": 0.19538,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.06562,
+      "top_team": "lookahead bias and pray",
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "lookahead bias and pray",
+          "score": 0.06562
+        },
+        {
+          "rank": 2,
+          "name": "Hu\u1ef3nh Qu\u1ed1c Vi\u1ec7t",
+          "score": 0.06948
+        },
+        {
+          "rank": 3,
+          "name": "Chrysostomos Koumides",
+          "score": 0.07088
+        },
+        {
+          "rank": 4,
+          "name": "Marcus Harvey",
+          "score": 0.0715
+        },
+        {
+          "rank": 5,
+          "name": "KiroSamurai",
+          "score": 0.07205
+        },
+        {
+          "rank": 6,
+          "name": "Muhammad",
+          "score": 0.07578
+        },
+        {
+          "rank": 7,
+          "name": "harry",
+          "score": 0.07786
+        },
+        {
+          "rank": 8,
+          "name": "Filtered",
+          "score": 0.07863
+        }
+      ]
     }
   ],
   "best_rank": 3020,
@@ -2130,7 +2188,7 @@
       "worst_rank": 3026,
       "end_rank": 3026,
       "end_score": 0.19538,
-      "checks": 35,
+      "checks": 36,
       "games_scored": 24
     }
   }
