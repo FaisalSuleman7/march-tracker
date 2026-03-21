@@ -356,10 +356,10 @@ let liveGamesLastFetch = 0;
 async function fetchLiveGames(){
   if(liveGamesCache && Date.now()-liveGamesLastFetch < 120000) return liveGamesCache;
   try{
-    // Fetch BOTH men's and women's — Kaggle scores both tournaments
+    // groups=100 = NCAA Tournament games only (not NIT, CBI etc.)
     const [menRes, womenRes] = await Promise.all([
-      fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?limit=100&groups=100&dates=20260319-20260407'),
-      fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?limit=100&groups=100&dates=20260319-20260408')
+      fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?limit=200&groups=100&dates=20260319-20260407'),
+      fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?limit=200&groups=100&dates=20260319-20260408')
     ]);
     const menData   = menRes.ok   ? await menRes.json()   : null;
     const womenData = womenRes.ok ? await womenRes.json() : null;
@@ -472,17 +472,26 @@ function renderLiveGames(live){
     return;
   }
 
-  // Show in-progress first, then recent completed, then upcoming
+  // Helper: convert UTC date to Munich time string
+  const toMunich = (dateStr) => {
+    try{
+      const d = new Date(new Date(dateStr).getTime() + 60*60*1000); // UTC+1
+      const p = n=>String(n).padStart(2,'0');
+      return p(d.getUTCHours())+':'+p(d.getUTCMinutes());
+    }catch(e){ return '—'; }
+  };
+
   const inProg   = live.inProgress;
-  const completed= live.games.filter(g=>g.completed).slice(-6).reverse();
-  const upcoming = live.scheduled.slice(0,4);
+  const completed= live.games.filter(g=>g.completed).slice(-8).reverse();
+  const upcoming = live.scheduled.slice(0,6);
 
   let html = '';
 
   if(inProg.length){
-    html += `<div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:1px;text-transform:uppercase;padding:8px 14px 4px;">🔴 Live Now</div>`;
+    html += `<div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:1px;text-transform:uppercase;padding:8px 14px 4px;">🔴 Live Now (${inProg.length} games)</div>`;
     html += inProg.map(g=>`
-      <div style="display:grid;grid-template-columns:1fr 40px 40px 1fr 60px;gap:4px;align-items:center;padding:6px 14px;border-bottom:1px solid rgba(30,37,48,.5);font-family:var(--mono);font-size:11px;">
+      <div style="display:grid;grid-template-columns:16px 1fr 36px 36px 1fr 65px;gap:3px;align-items:center;padding:6px 14px;border-bottom:1px solid rgba(30,37,48,.5);font-family:var(--mono);font-size:11px;">
+        <span style="color:var(--muted);font-size:9px;">${g.gender||''}</span>
         <span style="color:var(--text);text-align:right;">${g.awayTeam||'?'}</span>
         <span style="color:var(--orange);text-align:center;font-weight:500;">${g.awayScore||0}</span>
         <span style="color:var(--orange);text-align:center;font-weight:500;">${g.homeScore||0}</span>
@@ -494,9 +503,10 @@ function renderLiveGames(live){
   if(completed.length){
     html += `<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:8px 14px 4px;">✓ Recent Results</div>`;
     html += completed.map(g=>{
-      const aWin = parseInt(g.awayScore)>parseInt(g.homeScore);
+      const aWin = parseInt(g.awayScore) > parseInt(g.homeScore);
       const hWin = !aWin;
-      return`<div style="display:grid;grid-template-columns:1fr 40px 40px 1fr;gap:4px;align-items:center;padding:5px 14px;border-bottom:1px solid rgba(30,37,48,.3);font-family:var(--mono);font-size:10px;">
+      return`<div style="display:grid;grid-template-columns:16px 1fr 36px 36px 1fr;gap:3px;align-items:center;padding:5px 14px;border-bottom:1px solid rgba(30,37,48,.3);font-family:var(--mono);font-size:10px;">
+        <span style="color:var(--muted);font-size:9px;">${g.gender||''}</span>
         <span style="color:${aWin?'var(--text)':'var(--muted)'};text-align:right;${aWin?'font-weight:500':''}">${g.awayTeam||'?'}</span>
         <span style="color:${aWin?'var(--green)':'var(--muted)'};text-align:center;">${g.awayScore||0}</span>
         <span style="color:${hWin?'var(--green)':'var(--muted)'};text-align:center;">${g.homeScore||0}</span>
@@ -506,16 +516,15 @@ function renderLiveGames(live){
   }
 
   if(upcoming.length){
-    html += `<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:8px 14px 4px;">○ Up Next</div>`;
+    html += `<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:8px 14px 4px;">○ Up Next (Munich time)</div>`;
     html += upcoming.map(g=>{
-      const t = new Date(new Date(g.startTime).getTime());
-      const p = n=>String(n).padStart(2,'0');
-      const localTime = `${p(t.getUTCHours()+1)}:${p(t.getUTCMinutes())}`;
-      return`<div style="display:grid;grid-template-columns:1fr 20px 1fr 50px;gap:4px;align-items:center;padding:5px 14px;border-bottom:1px solid rgba(30,37,48,.3);font-family:var(--mono);font-size:10px;">
+      const localTime = toMunich(g.startTime);
+      return`<div style="display:grid;grid-template-columns:16px 1fr 20px 1fr 50px;gap:3px;align-items:center;padding:5px 14px;border-bottom:1px solid rgba(30,37,48,.3);font-family:var(--mono);font-size:10px;">
+        <span style="color:var(--muted);font-size:9px;">${g.gender||''}</span>
         <span style="color:var(--muted);text-align:right;">${g.awayTeam||'?'}</span>
         <span style="color:var(--muted);text-align:center;">vs</span>
         <span style="color:var(--muted);">${g.homeTeam||'?'}</span>
-        <span style="color:var(--muted);font-size:9px;">${localTime}</span>
+        <span style="color:var(--orange);font-size:9px;">${localTime}</span>
       </div>`;
     }).join('');
   }
