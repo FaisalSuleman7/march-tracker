@@ -976,14 +976,18 @@ function renderProjection(snaps){
 // ── load ─────────────────────────────────────────────────────────
 async function load(){
   let h=null;
+  const cb = Date.now()+'_'+Math.random().toString(36).slice(2);
   const urls=[
-    'https://raw.githubusercontent.com/FaisalSuleman7/march-tracker/main/tracker_history.json?nocache='+Date.now(),
-    'tracker_history.json?nocache='+Date.now()
+    'https://raw.githubusercontent.com/FaisalSuleman7/march-tracker/main/tracker_history.json?cb='+cb,
+    'tracker_history.json?cb='+cb
   ];
   for(const url of urls){
     try{
       console.log('Fetching:', url);
-      const r=await fetch(url);
+      const r=await fetch(url, {
+        cache: 'no-store',
+        headers: {'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache'}
+      });
       console.log('Response:', r.status, r.ok);
       if(r.ok){
         h=await r.json();
