@@ -403,11 +403,11 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
         <table>
           <thead><tr>
             <th>Time (Munich)</th>
-            <th style="text-align:center;">Your Games</th>
-            <th>Your Brier</th>
-            <th style="text-align:center;">Kaggle @ same count</th>
-            <th>Kaggle Brier</th>
-            <th>Diff</th>
+            <th style="text-align:center;color:var(--purple);">Your Games</th>
+            <th style="color:var(--purple);">Your Brier</th>
+            <th style="text-align:center;color:var(--blue);">Kaggle Games</th>
+            <th style="color:var(--green);">Kaggle Brier</th>
+            <th>Diff (yours - Kaggle)</th>
             <th>Note</th>
           </tr></thead>
           <tbody id="a-log-tbody"></tbody>
@@ -1467,23 +1467,38 @@ const TEAM_IDS_M={
   'Oregon':1316,'Clemson':1161,'NC State':1303,'Washington':1447,
   'Baylor':1124,'Colorado St':1166,'Colorado State':1166,
   'Virginia Tech':1439,'Louisville':1262,'TCU':1396,
-  'Texas A&M':1398,'VCU':1432,'Vanderbilt':1435,'Dayton':1173,
-  'Nevada':1295,'Liberty':1259,'Georgia':1203,'South Carolina':1371,
-  'Notre Dame':1313,'Southern':1384,'James Madison':1237,
-  'Fairfield':1191,'Rhode Island':1348,'Murray St':1286,'Murray State':1286,
+  'Texas A&M':1398,'VCU':1432,'Virginia Commonwealth':1432,
+  'Vanderbilt':1435,'Dayton':1173,'Nevada':1295,'Liberty':1259,
+  'Georgia':1203,'South Carolina':1371,'Notre Dame':1313,
+  'James Madison':1237,'Fairfield':1191,'Rhode Island':1348,
+  'Murray St':1286,'Murray State':1286,
   'S Dakota St':1356,'South Dakota St':1356,'South Dakota State':1356,
-  'Akron':1103,'Missouri':1282,'Cal Baptist':1140,'California Baptist':1140,
-  'Furman':1199,'High Point':1218,'Queens':1343,'Miami':1272,'Miami FL':1272,
-  'Miami (FL)':1272,'GW':1207,'George Washington':1207,
-  'New Mexico':1299,'Oklahoma St':1317,'Okla St':1317,'Cal':1139,
+  'Akron':1103,'Missouri':1282,'Furman':1199,'High Point':1218,
+  'Queens':1343,'Miami':1272,'Miami FL':1272,'Miami (FL)':1272,
+  'GW':1207,'George Washington':1207,'New Mexico':1299,
+  'Oklahoma St':1317,'Okla St':1317,'Cal':1139,'California':1139,
   'UNCW':1414,'UNC Wilmington':1414,'Northern Iowa':1307,'UCF':1415,
   'St. Johns':1390,'SJU':1390,'Wichita St':1451,'UNLV':1423,
   'Wright St':1463,'Wright State':1463,'Prairie View':1332,
-  'LIU':1258,'Santa Clara':1366,'Hofstra':1219,
-  // CRITICAL: exact names to avoid fuzzy mismatch
-  'Tennessee St':1394,'Tennessee State':1394,  // NOT Tennessee (1397)
-  'S Florida':1378,'South Florida':1378,        // NOT Florida (1196)
-  'Queens Univ':1343,
+  'Santa Clara':1366,'Hofstra':1219,'Siena':1369,
+  'Penn':1327,'Pennsylvania':1327,'Howard':1221,
+  'Wisconsin':1458,'North Carolina':1312,'UNC':1312,
+  'McNeese':1271,'McNeese St':1271,'BYU':1137,'Brigham Young':1137,
+  'Miami OH':1273,'Miami (OH)':1273,
+  'Idaho':1223,'Troy':1411,'Kennesaw St':1244,'Kennesaw State':1244,
+  'N Dakota St':1292,'North Dakota St':1292,'NDSU':1292,
+  'Illinois St':1226,'Illinois State':1226,
+  'George Mason':1205,'Drexel':1180,'Fordham':1198,
+  'Southern':1384,'Southern Univ':1384,
+  // CRITICAL FIXES — easily confused names
+  'Tennessee St':1394,'Tennessee State':1394,   // NOT Tennessee (1397)
+  'S Florida':1378,'South Florida':1378,         // NOT Florida (1196)
+  // Unmatched teams from status bar — fixed here
+  'Saint Louis':1358,'SLU':1358,
+  'Hawai\'i':1214,'Hawaii':1214,
+  'Saint Mary\'s':1362,'St Mary\'s':1362,"St. Mary's":1362,
+  'Long Island':1260,'LIU':1258,
+  'CA Baptist':1140,'Cal Baptist':1140,'California Baptist':1140,
 };
 const TEAM_IDS_W={
   'South Carolina':3417,'UConn':3163,'Texas':3400,'Tennessee':3397,
@@ -1691,31 +1706,78 @@ function renderAnalysis(){
   const p = n=>String(n).padStart(2,'0');
   const timeStr = `${now.getUTCFullYear()}-${p(now.getUTCMonth()+1)}-${p(now.getUTCDate())} ${p(now.getUTCHours())}:${p(now.getUTCMinutes())}`;
 
-  // Only log if game count or score changed
+  // Only log if game count or Kaggle score changed
   const lastLog = aScoreLog[aScoreLog.length-1];
-  const changed = !lastLog || lastLog.myGames!==myGames || lastLog.myBrier!==totalBrier;
+  const changed = !lastLog
+    || lastLog.myGames !== myGames
+    || lastLog.myBrier !== totalBrier
+    || lastLog.kaggleBrier !== kaggleBrier
+    || lastLog.kaggleGames !== kaggleGames;
+
   if(changed){
+    // Detect if Kaggle score itself changed since last log
+    let kaggleNote = '';
+    if(lastLog && lastLog.kaggleBrier !== kaggleBrier){
+      const kDiff = kaggleBrier - lastLog.kaggleBrier;
+      kaggleNote = ` | Kaggle updated: ${fmt(lastLog.kaggleBrier,5)} → ${fmt(kaggleBrier,5)} (${kDiff>0?'+':''}${fmt(kDiff,5)})`;
+    }
+
     aScoreLog.push({
       time: timeStr,
       myGames, myBrier: totalBrier,
       kaggleGames, kaggleBrier,
-      // kaggleAtMyGames will be filled in when Kaggle reaches the same count
       kaggleAtMyGames: (kaggleGames===myGames) ? kaggleBrier : null,
       diff: (kaggleGames===myGames) ? diff : null,
-      note: myGames>kaggleGames
-        ? `⚡ you're ${gameGap} games ahead — waiting for Kaggle to catch up`
+      note: (myGames>kaggleGames
+        ? `you: ${myGames} games · Kaggle: ${kaggleGames} -- you're ${gameGap} ahead`
         : myGames===kaggleGames
-        ? `✅ same count · diff = ${(diff>0?'+':'')+fmt(diff,5)}`
-        : `⏳ Kaggle has more games scored`
+        ? `same count (${myGames}) -- diff = ${(diff>0?'+':'')+fmt(diff,5)}`
+        : `you: ${myGames} · Kaggle: ${kaggleGames}`) + kaggleNote
     });
-    // Also try to fill in kaggleAtMyGames for any older log entry
-    // whose game count now matches Kaggle's current count
+
+    // Back-fill kaggleAtMyGames for older entries when Kaggle catches up
     for(const entry of aScoreLog){
       if(entry.kaggleAtMyGames===null && entry.myGames===kaggleGames){
         entry.kaggleAtMyGames = kaggleBrier;
         entry.diff = entry.myBrier - kaggleBrier;
-        entry.note = `✅ Kaggle reached ${kaggleGames} games · diff = ${(entry.diff>0?'+':'')+fmt(entry.diff,5)}`;
+        entry.note = `Kaggle reached ${kaggleGames} games -- diff = ${(entry.diff>0?'+':'')+fmt(entry.diff,5)}`;
       }
+    }
+  }
+
+  // Pre-populate historical Kaggle score changes from snapshot data
+  // This shows the 0.19841 -> 0.19538 change that already happened
+  if(aScoreLog.length === 0 || aScoreLog[0]._fromHistory) {
+    // Build log from historical snapshots
+    const histSnaps = (window._lastHistory && window._lastHistory.snapshots)
+      ? [...window._lastHistory.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))
+      : [];
+    let prevScore = null;
+    const histLog = [];
+    for(const s of histSnaps){
+      if(s.score !== prevScore){
+        const d = new Date(new Date(s.timestamp).getTime()+60*60*1000);
+        const p = n=>String(n).padStart(2,'0');
+        const t = `${d.getUTCFullYear()}-${p(d.getUTCMonth()+1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+        histLog.push({
+          _fromHistory: true,
+          time: t,
+          myGames: null,
+          myBrier: null,
+          kaggleGames: s.games_scored ? s.games_scored*2 : null,
+          kaggleBrier: s.score,
+          kaggleAtMyGames: null,
+          diff: null,
+          note: prevScore
+            ? `Kaggle rescored: ${fmt(prevScore,5)} --> ${fmt(s.score,5)} (${s.score<prevScore?'improved':'worsened'})`
+            : `First Kaggle score recorded`
+        });
+        prevScore = s.score;
+      }
+    }
+    // Only add history entries if we haven't yet
+    if(aScoreLog.length===0 || aScoreLog[0]._fromHistory){
+      aScoreLog = [...histLog, ...aScoreLog.filter(e=>!e._fromHistory)];
     }
   }
 
@@ -1723,15 +1785,21 @@ function renderAnalysis(){
   const tbody = document.getElementById('a-log-tbody');
   if(tbody){
     tbody.innerHTML = [...aScoreLog].reverse().map(l=>{
-      const matched = l.kaggleAtMyGames !== null;
-      const dColor = !matched?'var(--muted)':l.diff<0?'var(--green)':l.diff>0?'var(--red)':'var(--muted)';
-      return`<tr style="${matched?'background:rgba(34,197,94,.03)':''}">
+      const isHist   = l._fromHistory;
+      const matched  = l.kaggleAtMyGames !== null && !isHist;
+      const dColor   = !matched?'var(--muted)':l.diff<0?'var(--green)':l.diff>0?'var(--red)':'var(--muted)';
+      const rowStyle = isHist ? 'background:rgba(59,130,246,.03);'
+                     : matched ? 'background:rgba(34,197,94,.03);' : '';
+      return`<tr style="${rowStyle}">
         <td style="color:var(--muted);font-size:10px;">${l.time}</td>
-        <td style="color:var(--purple);text-align:center;font-weight:500;">${l.myGames}</td>
-        <td style="color:var(--purple);">${fmt(l.myBrier,5)}</td>
-        <td style="color:${matched?'var(--green)':'var(--muted)'};text-align:center;">${matched?l.myGames:'—'}</td>
-        <td style="color:${matched?'var(--green)':'var(--muted)'};">${matched?fmt(l.kaggleAtMyGames,5):'waiting...'}</td>
-        <td style="color:${dColor};font-weight:${matched?'500':'400'};">${matched?(l.diff>0?'+':'')+fmt(l.diff,5):'—'}</td>
+        <td style="color:${isHist?'var(--muted)':'var(--purple)'};text-align:center;font-weight:500;">
+          ${isHist ? '—' : l.myGames}</td>
+        <td style="color:${isHist?'var(--muted)':'var(--purple)'};">
+          ${isHist ? '—' : fmt(l.myBrier,5)}</td>
+        <td style="color:var(--blue);text-align:center;">${l.kaggleGames||'—'}</td>
+        <td style="color:var(--green);">${fmt(l.kaggleBrier,5)}</td>
+        <td style="color:${dColor};font-weight:${matched?'500':'400'};">
+          ${matched?(l.diff>0?'+':'')+fmt(l.diff,5):isHist?'—':'waiting...'}</td>
         <td style="color:var(--muted);font-size:10px;">${l.note}</td>
       </tr>`;
     }).join('');
