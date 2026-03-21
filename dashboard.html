@@ -414,15 +414,23 @@ async function renderGamesScored(snaps){
   const live     = parseESPN(espnData);
 
   // Use live count if available, else fall back to snapshot estimate
-  const last   = snaps[snaps.length-1];
-  let games    = live.completed > 0 ? live.completed : (last&&last.games_scored!=null?last.games_scored*2:estimateGamesFromDate()*2);
-  const source = live.completed > 0 ? '🔴 LIVE from ESPN' : '📊 estimated';
-  const pct    = Math.round((games/134)*100);
-  const splitInfo = live.menCompleted>0 ? ` · ♂ ${live.menCompleted}/67 men · ♀ ${live.womenCompleted}/67 women` : '';
+  const last    = snaps[snaps.length-1];
+  // ESPN = games finished on the court
+  // Kaggle = games scored on leaderboard (lags ESPN by a few hours)
+  const espnDone = live.completed > 0 ? live.completed : null;
+  const kaggleScored = last&&last.games_scored!=null ? last.games_scored*2 : estimateGamesFromDate()*2;
+  // Show Kaggle's count as primary (what actually affects your rank)
+  const games   = kaggleScored;
+  const pct     = Math.round((games/134)*100);
 
   set('games-count', games);
   document.getElementById('games-bar').style.width = pct+'%';
-  set('games-sub', `${pct}% scored · ${source}${splitInfo}`);
+
+  // Show both counts clearly
+  const espnStr = espnDone!=null
+    ? ` · ESPN finished: ${espnDone} (♂${live.menCompleted} ♀${live.womenCompleted})`
+    : '';
+  set('games-sub', `Kaggle scored: ${games}/134${espnStr}`);
 
   const stability = games===0   ? 'No games scored yet — leaderboard will be volatile'
                   : games<32    ? 'Play-in + early rounds — leaderboard very volatile'
