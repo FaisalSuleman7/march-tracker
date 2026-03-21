@@ -227,7 +227,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
   </div>
 
   <!-- Games Scored + Daily Summary + Top 8 -->
-  <div class="grid3" style="margin-bottom:14px;">
+  <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:14px;">
 
     <div class="panel">
       <div class="ph"><span class="pt">👑 Top 8 Leaderboard Tracker</span><span class="ps">consistency over time · who stays at top</span></div>
@@ -246,6 +246,16 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
         </div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);" id="games-stability">—</div>
         <div style="margin-top:14px;" id="rounds-mini"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">🏀 Live Tournament Scores</span>
+        <span class="ps">real-time via ESPN · auto-refreshes</span>
+      </div>
+      <div style="max-height:280px;overflow-y:auto;" id="live-games-list">
+        <div class="empty">Loading live scores...</div>
       </div>
     </div>
 
@@ -339,65 +349,173 @@ function set(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function setH(id,v){const e=document.getElementById(id);if(e)e.innerHTML=v;}
 function sortedSnaps(h){return[...h.snapshots].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));}
 
+// ── Live Games Data ───────────────────────────────────────────────
+// Fetches real NCAA game data from a public API proxy
+let liveGamesCache = null;
+let liveGamesLastFetch = 0;
+
+async function fetchLiveGames(){
+  // Cache for 2 minutes to avoid hammering API
+  if(liveGamesCache && Date.now()-liveGamesLastFetch < 120000) return liveGamesCache;
+  try{
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?limit=100&groups=100&dates=20260320-20260323');
+    if(!r.ok) return null;
+    const data = await r.json();
+    liveGamesCache = data;
+    liveGamesLastFetch = Date.now();
+    return data;
+  }catch(e){
+    return null;
+  }
+}
+
+function parseESPN(data){
+  if(!data||!data.events) return {completed:0,inProgress:[],scheduled:[],games:[]};
+  const games = data.events.map(e=>{
+    const comp   = e.competitions&&e.competitions[0];
+    const status = e.status&&e.status.type;
+    const home   = comp&&comp.competitors&&comp.competitors.find(c=>c.homeAway==='home');
+    const away   = comp&&comp.competitors&&comp.competitors.find(c=>c.homeAway==='away');
+    return{
+      id        : e.id,
+      name      : e.name||e.shortName,
+      status    : status&&status.name,       // STATUS_IN_PROGRESS, STATUS_FINAL, STATUS_SCHEDULED
+      completed : status&&status.completed,
+      homeTeam  : home&&home.team&&home.team.shortDisplayName,
+      awayTeam  : away&&away.team&&away.team.shortDisplayName,
+      homeScore : home&&home.score,
+      awayScore : away&&away.score,
+      clock     : e.status&&e.status.displayClock,
+      period    : e.status&&e.status.period,
+      startTime : e.date,
+    };
+  });
+  return{
+    completed  : games.filter(g=>g.completed).length,
+    inProgress : games.filter(g=>g.status==='STATUS_IN_PROGRESS'),
+    scheduled  : games.filter(g=>g.status==='STATUS_SCHEDULED'),
+    games,
+  };
+}
+
 // ── Games Scored ──────────────────────────────────────────────────
-function renderGamesScored(snaps){
-  const last  = snaps[snaps.length-1];
-  const games = last && last.games_scored != null ? last.games_scored : estimateGamesFromDate();
-  const pct   = Math.round((games/63)*100);
+async function renderGamesScored(snaps){
+  // Try live ESPN data first
+  const espnData = await fetchLiveGames();
+  const live     = parseESPN(espnData);
+
+  // Use live count if available, else fall back to snapshot estimate
+  const last   = snaps[snaps.length-1];
+  let games    = live.completed > 0 ? live.completed : (last&&last.games_scored!=null?last.games_scored:estimateGamesFromDate());
+  const source = live.completed > 0 ? '🔴 LIVE from ESPN' : '📊 estimated';
+  const pct    = Math.round((games/63)*100);
 
   set('games-count', games);
-  document.getElementById('games-bar').style.width = pct + '%';
+  document.getElementById('games-bar').style.width = pct+'%';
+  set('games-sub', `${pct}% scored · ${source}`);
 
-  const stability = games === 0  ? 'No games scored yet — leaderboard will be volatile'
-                  : games < 16   ? 'Early stages — leaderboard very volatile, expect big swings'
-                  : games < 32   ? 'Round 1 complete — leaderboard stabilising'
-                  : games < 48   ? 'Round 2 complete — scores becoming more reliable'
-                  : games < 57   ? 'Sweet 16 + Elite 8 done — leaderboard quite stable'
-                  : games < 62   ? 'Final Four done — nearly final'
-                  : games === 63 ? '🏆 All 63 games scored — FINAL LEADERBOARD'
+  const stability = games===0  ? 'No games scored yet — leaderboard will be volatile'
+                  : games<16   ? 'Early stages — leaderboard very volatile, expect big swings'
+                  : games<32   ? 'Round 1 in progress — leaderboard stabilising'
+                  : games<48   ? 'Round 2 complete — scores becoming more reliable'
+                  : games<57   ? 'Sweet 16 + Elite 8 done — leaderboard quite stable'
+                  : games<62   ? 'Final Four done — nearly final'
+                  : games===63 ? '🏆 All 63 games scored — FINAL LEADERBOARD'
                   : 'Championship week — nearly settled';
   set('games-stability', stability);
-  set('games-sub', `${pct}% of tournament scored`);
 
-  // Mini round progress
-  const ROUNDS_MINI = [
-    {name:'R1', games:32, end:'2026-03-23'},
-    {name:'R2', games:16, end:'2026-03-23'},
-    {name:'S16',games:8,  end:'2026-03-28'},
-    {name:'E8', games:4,  end:'2026-03-30'},
-    {name:'F4', games:2,  end:'2026-04-05'},
-    {name:'🏆', games:1,  end:'2026-04-06'},
+  // Mini round progress bars
+  const ROUNDS_MINI=[
+    {name:'R1',games:32,end:'2026-03-23'},{name:'R2',games:16,end:'2026-03-23'},
+    {name:'S16',games:8,end:'2026-03-28'},{name:'E8',games:4,end:'2026-03-30'},
+    {name:'F4',games:2,end:'2026-04-05'},{name:'🏆',games:1,end:'2026-04-06'},
   ];
-  let cumulative = 0;
-  document.getElementById('rounds-mini').innerHTML = ROUNDS_MINI.map(r=>{
-    cumulative += r.games;
-    const done  = games >= cumulative;
-    const partial = !done && games > cumulative - r.games;
-    const partPct = partial ? Math.round(((games-(cumulative-r.games))/r.games)*100) : 0;
-    const color = done ? 'var(--green)' : partial ? 'var(--orange)' : 'var(--border)';
-    return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-family:var(--mono);font-size:10px;">
+  let cum=0;
+  document.getElementById('rounds-mini').innerHTML=ROUNDS_MINI.map(r=>{
+    cum+=r.games;
+    const done=games>=cum;
+    const partial=!done&&games>cum-r.games;
+    const pp=partial?Math.round(((games-(cum-r.games))/r.games)*100):0;
+    const color=done?'var(--green)':partial?'var(--orange)':'var(--border)';
+    return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-family:var(--mono);font-size:10px;">
       <span style="color:var(--muted);width:28px;">${r.name}</span>
       <div style="flex:1;background:var(--border);border-radius:3px;height:6px;">
-        <div style="width:${done?100:partPct}%;height:100%;background:${color};border-radius:3px;"></div>
+        <div style="width:${done?100:pp}%;height:100%;background:${color};border-radius:3px;"></div>
       </div>
-      <span style="color:${done?'var(--green)':'var(--muted)'};width:30px;text-align:right;">${done?'✓':partial?partPct+'%':'—'}</span>
+      <span style="color:${done?'var(--green)':'var(--muted)'};width:30px;text-align:right;">${done?'✓':partial?pp+'%':'—'}</span>
     </div>`;
   }).join('');
+
+  // Render live games panel
+  renderLiveGames(live);
+}
+
+function renderLiveGames(live){
+  const el = document.getElementById('live-games-list');
+  if(!el) return;
+
+  if(!live||!live.games||live.games.length===0){
+    el.innerHTML='<div class="empty">Could not load live scores — check <a href="https://www.espn.com/mens-college-basketball/scoreboard" target="_blank" style="color:var(--orange)">ESPN</a></div>';
+    return;
+  }
+
+  // Show in-progress first, then recent completed, then upcoming
+  const inProg   = live.inProgress;
+  const completed= live.games.filter(g=>g.completed).slice(-6).reverse();
+  const upcoming = live.scheduled.slice(0,4);
+
+  let html = '';
+
+  if(inProg.length){
+    html += `<div style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:1px;text-transform:uppercase;padding:8px 14px 4px;">🔴 Live Now</div>`;
+    html += inProg.map(g=>`
+      <div style="display:grid;grid-template-columns:1fr 40px 40px 1fr 60px;gap:4px;align-items:center;padding:6px 14px;border-bottom:1px solid rgba(30,37,48,.5);font-family:var(--mono);font-size:11px;">
+        <span style="color:var(--text);text-align:right;">${g.awayTeam||'?'}</span>
+        <span style="color:var(--orange);text-align:center;font-weight:500;">${g.awayScore||0}</span>
+        <span style="color:var(--orange);text-align:center;font-weight:500;">${g.homeScore||0}</span>
+        <span style="color:var(--text);">${g.homeTeam||'?'}</span>
+        <span style="color:var(--green);font-size:9px;">${g.clock||''} Q${g.period||''}</span>
+      </div>`).join('');
+  }
+
+  if(completed.length){
+    html += `<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:8px 14px 4px;">✓ Recent Results</div>`;
+    html += completed.map(g=>{
+      const aWin = parseInt(g.awayScore)>parseInt(g.homeScore);
+      const hWin = !aWin;
+      return`<div style="display:grid;grid-template-columns:1fr 40px 40px 1fr;gap:4px;align-items:center;padding:5px 14px;border-bottom:1px solid rgba(30,37,48,.3);font-family:var(--mono);font-size:10px;">
+        <span style="color:${aWin?'var(--text)':'var(--muted)'};text-align:right;${aWin?'font-weight:500':''}">${g.awayTeam||'?'}</span>
+        <span style="color:${aWin?'var(--green)':'var(--muted)'};text-align:center;">${g.awayScore||0}</span>
+        <span style="color:${hWin?'var(--green)':'var(--muted)'};text-align:center;">${g.homeScore||0}</span>
+        <span style="color:${hWin?'var(--text)':'var(--muted)'};${hWin?'font-weight:500':''}">${g.homeTeam||'?'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  if(upcoming.length){
+    html += `<div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:8px 14px 4px;">○ Up Next</div>`;
+    html += upcoming.map(g=>{
+      const t = new Date(new Date(g.startTime).getTime());
+      const p = n=>String(n).padStart(2,'0');
+      const localTime = `${p(t.getUTCHours()+1)}:${p(t.getUTCMinutes())}`;
+      return`<div style="display:grid;grid-template-columns:1fr 20px 1fr 50px;gap:4px;align-items:center;padding:5px 14px;border-bottom:1px solid rgba(30,37,48,.3);font-family:var(--mono);font-size:10px;">
+        <span style="color:var(--muted);text-align:right;">${g.awayTeam||'?'}</span>
+        <span style="color:var(--muted);text-align:center;">vs</span>
+        <span style="color:var(--muted);">${g.homeTeam||'?'}</span>
+        <span style="color:var(--muted);font-size:9px;">${localTime}</span>
+      </div>`;
+    }).join('');
+  }
+
+  el.innerHTML = html || '<div class="empty">No games today</div>';
 }
 
 function estimateGamesFromDate(){
-  const today = new Date();
-  const schedule = [
-    ['2026-03-19',8],['2026-03-20',8],['2026-03-21',8],
-    ['2026-03-22',8],['2026-03-23',8],['2026-03-27',4],
-    ['2026-03-28',4],['2026-03-29',2],['2026-03-30',2],
-    ['2026-04-05',2],['2026-04-06',1],
-  ];
-  let g = 0;
-  for(const [d,n] of schedule){
-    if(new Date(d) <= today) g += n; else break;
-  }
-  return Math.min(g, 63);
+  const today=new Date();
+  const schedule=[['2026-03-19',8],['2026-03-20',8],['2026-03-21',8],['2026-03-22',8],['2026-03-23',8],['2026-03-27',4],['2026-03-28',4],['2026-03-29',2],['2026-03-30',2],['2026-04-05',2],['2026-04-06',1]];
+  let g=0;
+  for(const[d,n]of schedule){if(new Date(d)<=today)g+=n;else break;}
+  return Math.min(g,63);
 }
 
 // ── Leadership History ────────────────────────────────────────────
@@ -876,7 +994,7 @@ async function load(){
   renderTimeline(snaps);
   renderRounds(snaps);
   renderHistogram(h,snaps);
-  renderGamesScored(snaps);
+  await renderGamesScored(snaps);
   renderTop8(snaps, 'hmfaisal');
   renderLeaderHistory(snaps);
   renderDailySummary(h);
@@ -1048,6 +1166,11 @@ function renderSubTrends(h,snaps){
 load();
 setInterval(load,60000);
 setInterval(updateGameDayBanner,60000);
+// Refresh live scores every 60 seconds independently
+setInterval(async()=>{
+  const data = await fetchLiveGames();
+  renderLiveGames(parseESPN(data));
+}, 60000);
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" onload="load()" onerror="console.warn('Chart.js blocked')"></script>
 </body>
