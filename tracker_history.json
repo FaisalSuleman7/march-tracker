@@ -25,7 +25,7 @@
       "selected": true,
       "version": "v7",
       "local_brier": 0.04595,
-      "notes": "Platt Scaling — BEST real score"
+      "notes": "Platt Scaling \u2014 BEST real score"
     },
     {
       "file": "submission_kaggle1.csv",
@@ -349,5 +349,31 @@
     }
   ],
   "best_rank": 3020,
-  "best_score": 0.19538
+  "best_score": 0.19538,
+  "submission_scores_history": [
+    {
+      "timestamp": "2026-03-21T10:22:52.000000+00:00",
+      "timestamp_local": "2026-03-21 11:22",
+      "note": "Manually recorded from Kaggle leaderboard page",
+      "scores": {
+        "submission_kaggle7.csv": 0.19841,
+        "submission_kaggle2.csv": 0.24983,
+        "submission_kaggle1.csv": 0.20015,
+        "submission (1).csv": 0.20015,
+        "submission.csv": 0.19485
+      }
+    },
+    {
+      "timestamp": "2026-03-21T13:41:39.687761+00:00",
+      "timestamp_local": "2026-03-21 14:41",
+      "note": "First automated tracker snapshot \u2014 Kaggle rescored after early games",
+      "scores": {
+        "submission_kaggle7.csv": 0.19538,
+        "submission_kaggle2.csv": 0.24983,
+        "submission_kaggle1.csv": 0.20015,
+        "submission (1).csv": 0.20015,
+        "submission.csv": 0.19485
+      }
+    }
+  ]
 }
