@@ -241,11 +241,18 @@ function setH(id, v) { const e=document.getElementById(id); if(e) e.innerHTML=v;
 // ── load data ────────────────────────────────────────────────────
 async function load() {
   let h = null;
-  try {
-    const rawUrl = 'https://raw.githubusercontent.com/FaisalSuleman7/march-tracker/main/tracker_history.json';
-    const r = await fetch(rawUrl + '?t=' + Date.now());
-    if (r.ok) h = await r.json();
-  } catch(e) {}
+  // Try raw GitHub URL first (works on GitHub Pages),
+  // then fall back to local file (works on localhost)
+  const urls = [
+    'https://raw.githubusercontent.com/FaisalSuleman7/march-tracker/main/tracker_history.json?t=' + Date.now(),
+    'tracker_history.json?t=' + Date.now()
+  ];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) { h = await r.json(); break; }
+    } catch(e) {}
+  }
 
   if (!h || !h.snapshots || !h.snapshots.length) {
     document.getElementById('warn').style.display = 'block';
