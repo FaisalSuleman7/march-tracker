@@ -4,7 +4,8 @@ on:
   schedule:
     - cron: '*/30 * * * *'   # every 30 minutes
   workflow_dispatch:           # manual trigger
-
+  push:
+    branches: [main]           # also run on every push — keeps schedule alive
 jobs:
   track:
     runs-on: ubuntu-latest
