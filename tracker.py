@@ -255,8 +255,11 @@ def save_history(history, submissions=None):
 
 
 def record_snapshot(history, rank, score, total, top_score, top_name, entries_count):
+    from datetime import timedelta
     now       = datetime.now(timezone.utc)
-    local_now = datetime.now()
+    # Always use Munich time (UTC+1) regardless of where the script runs
+    # This ensures GitHub Actions and local PC show the same timezone
+    munich    = now + timedelta(hours=1)
     prev      = history['snapshots'][-1] if history['snapshots'] else {}
 
     rank_change  = (rank  - prev['rank'])  if rank  and prev.get('rank')  else None
@@ -267,7 +270,7 @@ def record_snapshot(history, rank, score, total, top_score, top_name, entries_co
     snap = {
         'timestamp'         : now.isoformat(),
         'timestamp_readable': now.strftime('%Y-%m-%d %H:%M UTC'),
-        'timestamp_local'   : local_now.strftime('%Y-%m-%d %H:%M'),
+        'timestamp_local'   : munich.strftime('%Y-%m-%d %H:%M'),
         'rank'              : rank,
         'total_teams'       : total,
         'scored_teams'      : entries_count,
