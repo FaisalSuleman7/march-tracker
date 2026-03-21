@@ -116,7 +116,17 @@ tr:hover td{background:rgba(249,115,22,.02);}
 .round-bar-fill{height:100%;border-radius:3px;}
 .round-status{font-size:9px;margin-top:3px;}
 
-/* top8 table */
+/* leadership history */
+.leader-row{display:grid;grid-template-columns:150px 1fr 90px 80px;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(30,37,48,.5);font-family:var(--mono);font-size:11px;}
+.leader-row:last-child{border-bottom:none;}
+.leader-row.current{background:rgba(249,115,22,.05);border-left:3px solid var(--orange);}
+.leader-row.dethroned{border-left:3px solid transparent;}
+.leader-time{color:var(--muted);font-size:10px;}
+.leader-name{color:var(--text);}
+.leader-score{color:var(--blue);text-align:right;}
+.leader-duration{color:var(--muted);font-size:10px;text-align:right;}
+
+.pb-0{padding:0;}
 .top8-row{display:grid;grid-template-columns:30px 1fr 90px 70px;gap:8px;align-items:center;padding:8px 14px;border-bottom:1px solid rgba(30,37,48,.5);font-family:var(--mono);font-size:11px;}
 .top8-row:last-child{border-bottom:none;}
 .top8-row.you{background:rgba(34,197,94,.05);border-left:2px solid var(--green);}
@@ -237,6 +247,27 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);" id="games-stability">—</div>
         <div style="margin-top:14px;" id="rounds-mini"></div>
       </div>
+    </div>
+
+  </div>
+
+  <!-- Leadership History + Top 8 Chart -->
+  <div class="grid2" style="margin-bottom:14px;">
+
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">👑 #1 Leadership History</span>
+        <span class="ps">every time the leader changed · full history</span>
+      </div>
+      <div class="pb-0" id="leader-history"></div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">
+        <span class="pt">📊 Top 8 Score Over Time</span>
+        <span class="ps">each line = one top team · builds as tournament progresses</span>
+      </div>
+      <div class="chart-wrap" style="height:260px;"><canvas id="cTop8"></canvas></div>
     </div>
 
   </div>
@@ -369,7 +400,153 @@ function estimateGamesFromDate(){
   return Math.min(g, 63);
 }
 
-// ── Top 8 Tracker ─────────────────────────────────────────────────
+// ── Leadership History ────────────────────────────────────────────
+function renderLeaderHistory(snaps){
+  const el = document.getElementById('leader-history');
+  if(!snaps.length){ el.innerHTML='<div class="empty">No data yet</div>'; return; }
+
+  // Build list of leadership changes
+  const changes = [];
+  let currentLeader = null;
+  let leaderSince   = null;
+
+  for(const s of snaps){
+    const top1 = s.top8 && s.top8.length ? s.top8[0] : {name: s.top_team, score: s.top_score};
+    if(!top1.name) continue;
+
+    if(currentLeader === null){
+      currentLeader = top1;
+      leaderSince   = s;
+    } else if(top1.name !== currentLeader.name){
+      // Leader changed — record the old leader's reign
+      changes.push({
+        name     : currentLeader.name,
+        score    : currentLeader.score,
+        from     : leaderSince.timestamp_local || leaderSince.timestamp?.slice(0,16),
+        to       : s.timestamp_local || s.timestamp?.slice(0,16),
+        isCurrent: false,
+      });
+      currentLeader = top1;
+      leaderSince   = s;
+    } else {
+      // Same leader — update their latest score
+      currentLeader = top1;
+    }
+  }
+
+  // Add current leader
+  if(currentLeader){
+    changes.push({
+      name     : currentLeader.name,
+      score    : currentLeader.score,
+      from     : leaderSince?.timestamp_local || leaderSince?.timestamp?.slice(0,16),
+      to       : null,
+      isCurrent: true,
+    });
+  }
+
+  // Reverse so current is on top
+  changes.reverse();
+
+  el.innerHTML = `
+    <div class="leader-row" style="background:var(--surface);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">
+      <span>Since</span><span>Team</span><span style="text-align:right;">Score</span><span style="text-align:right;">Held For</span>
+    </div>
+    ${changes.map((c,i)=>{
+      const isCurr  = c.isCurrent;
+      const crown   = isCurr ? '👑 ' : '';
+      const nameCol = isCurr
+        ? `<span class="leader-name" style="color:var(--orange);font-weight:500;">${crown}${c.name}</span>`
+        : `<span class="leader-name" style="color:var(--muted);">${c.name}</span>`;
+
+      // Calculate duration
+      let duration = '—';
+      if(c.from && c.to){
+        try{
+          const diffMs  = new Date(c.to.replace(' ','T')+':00') - new Date(c.from.replace(' ','T')+':00');
+          const diffMin = Math.round(diffMs/60000);
+          const diffHr  = Math.floor(diffMin/60);
+          const remMin  = diffMin % 60;
+          duration = diffHr>0 ? `${diffHr}h ${remMin}m` : `${diffMin}m`;
+        }catch(e){}
+      } else if(c.isCurrent){
+        duration = '<span style="color:var(--green)">CURRENT</span>';
+      }
+
+      return `<div class="leader-row ${isCurr?'current':'dethroned'}">
+        <span class="leader-time">${c.from||'—'}</span>
+        ${nameCol}
+        <span class="leader-score">${fmt(c.score,5)}</span>
+        <span class="leader-duration">${duration}</span>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ── Top 8 Score Chart ─────────────────────────────────────────────
+let cTop8 = null;
+function renderTop8Chart(snaps){
+  if(typeof Chart === 'undefined') return;
+
+  // Only use snapshots that have top8 data
+  const valid = snaps.filter(s => s.top8 && s.top8.length > 0);
+  if(valid.length < 1) return;
+
+  const labels   = valid.map(s => toLocal(s));
+  const COLORS   = ['#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#94a3b8'];
+
+  // Collect all unique team names across all valid snapshots
+  const nameSet = new Set();
+  valid.forEach(s => s.top8.forEach(t => nameSet.add(t.name)));
+  const names = [...nameSet].slice(0, 8);
+
+  const datasets = names.map((name, i) => ({
+    label           : name.length > 20 ? name.slice(0,18)+'…' : name,
+    data            : valid.map(s => {
+      const entry = s.top8.find(t => t.name === name);
+      return entry ? entry.score : null;
+    }),
+    borderColor     : COLORS[i % COLORS.length],
+    backgroundColor : 'transparent',
+    borderWidth     : 2,
+    pointBackgroundColor: COLORS[i % COLORS.length],
+    pointBorderColor: '#080b10',
+    pointBorderWidth: 2,
+    pointRadius     : 4,
+    pointHoverRadius: 7,
+    tension         : 0.3,
+    fill            : false,
+    spanGaps        : true,
+  }));
+
+  const ctx = document.getElementById('cTop8').getContext('2d');
+  if(cTop8) cTop8.destroy();
+  cTop8 = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 500 },
+      plugins: {
+        legend: { display: true, labels: { color:'#94a3b8', font:{family:'JetBrains Mono',size:9}, boxWidth:10, padding:10 }},
+        tooltip: {
+          backgroundColor:'#0f1318', borderColor:'#1e2530', borderWidth:1,
+          titleColor:'#475569', bodyColor:'#e2e8f0',
+          titleFont:{family:'JetBrains Mono',size:9}, bodyFont:{family:'JetBrains Mono',size:10},
+          padding:8, mode:'index', intersect:false,
+          callbacks:{
+            title: c=>'📅 '+c[0].label,
+            label: c=>c.raw!=null ? '  '+c.dataset.label+': '+fmt(c.raw,5) : null,
+          }
+        }
+      },
+      scales:{
+        x:{ ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxRotation:30,maxTicksLimit:8}, grid:{color:'rgba(30,37,48,.9)'}, border:{color:'rgba(30,37,48,.9)'} },
+        y:{ ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:6}, grid:{color:'rgba(30,37,48,.9)'}, border:{color:'rgba(30,37,48,.9)'},
+            title:{display:true, text:'Brier Score (lower = better)', color:'#475569', font:{family:'JetBrains Mono',size:8}} }
+      }
+    }
+  });
+}
 function renderTop8(snaps, yourName){
   const el = document.getElementById('top8-panel');
   if(!snaps.length){ el.innerHTML='<div class="empty">No data yet</div>'; return; }
@@ -701,6 +878,7 @@ async function load(){
   renderHistogram(h,snaps);
   renderGamesScored(snaps);
   renderTop8(snaps, 'hmfaisal');
+  renderLeaderHistory(snaps);
   renderDailySummary(h);
 
   if(typeof Chart!=='undefined'){
@@ -708,6 +886,7 @@ async function load(){
     renderScoreChart(snaps);
     renderSubTrends(h,snaps);
     renderProjection(snaps);
+    renderTop8Chart(snaps);
   }
 }
 
