@@ -19,13 +19,13 @@
     {
       "file": "submission_kaggle7.csv",
       "description": "",
-      "score": 0.19538,
+      "score": 0.19841,
       "status": "complete",
       "date": "2026-03-16 11:41",
-      "selected": false,
+      "selected": true,
       "version": "v7",
       "local_brier": 0.04595,
-      "notes": "Platt Scaling \u2014 BEST real score"
+      "notes": "Platt Scaling — BEST real score"
     },
     {
       "file": "submission_kaggle1.csv",
@@ -63,13 +63,13 @@
   ],
   "snapshots": [
     {
-      "timestamp": "2026-03-21T10:22:52.687761+00:00",
-      "timestamp_readable": "2026-03-21 10:42 UTC",
+      "timestamp": "2026-03-21T10:22:52.000000+00:00",
+      "timestamp_readable": "2026-03-21 10:22 UTC",
       "timestamp_local": "2026-03-21 11:22",
       "rank": 3020,
       "total_teams": 3485,
       "scored_teams": 3485,
-      "percentile": null,
+      "percentile": 13.35,
       "score": 0.19841,
       "rank_change": null,
       "score_change": null,
@@ -86,8 +86,8 @@
       "scored_teams": 3485,
       "percentile": 13.17,
       "score": 0.19538,
-      "rank_change": null,
-      "score_change": null,
+      "rank_change": 6,
+      "score_change": -0.00303,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
       "gap_to_top": 0.12976
@@ -348,6 +348,6 @@
       "gap_to_top": 0.12976
     }
   ],
-  "best_rank": 3026,
+  "best_rank": 3020,
   "best_score": 0.19538
 }
