@@ -242,7 +242,8 @@ function setH(id, v) { const e=document.getElementById(id); if(e) e.innerHTML=v;
 async function load() {
   let h = null;
   try {
-    const r = await fetch('tracker_history.json?t='+Date.now());
+    const rawUrl = 'https://raw.githubusercontent.com/FaisalSuleman7/march-tracker/main/tracker_history.json';
+    const r = await fetch(rawUrl + '?t=' + Date.now());
     if (r.ok) h = await r.json();
   } catch(e) {}
 
