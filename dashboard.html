@@ -584,10 +584,68 @@ function renderScoreChart(snaps){
 
 function renderSubTrends(h,snaps){
   if(typeof Chart==='undefined')return;
+
+  const COLORS=['#22c55e','#f97316','#3b82f6','#eab308','#ec4899','#06b6d4','#8b5cf6'];
+  let ci=0;
+
+  // Use submission_scores_history if available (richer data)
+  const history = h.submission_scores_history;
+  if(history && history.length >= 2){
+    const labels   = history.map(e=>e.timestamp_local||e.timestamp.slice(0,16).replace('T',' '));
+    const allFiles = Object.keys(history[0].scores);
+    const subs     = h.submissions||[];
+
+    const datasets = allFiles.map(file=>{
+      const sub   = subs.find(s=>s.file===file)||{};
+      const label = subLabel(sub.version&&sub.version!=='?'?sub:{file});
+      const color = sub.selected?'#22c55e':COLORS[ci++%COLORS.length];
+      return{
+        label,
+        data: history.map(e=>e.scores[file]||null),
+        borderColor:color,backgroundColor:color+'22',
+        borderWidth:sub.selected?3:1.5,
+        borderDash:sub.selected?[]:[4,3],
+        pointBackgroundColor:color,pointBorderColor:'#080b10',
+        pointBorderWidth:2,pointRadius:sub.selected?6:4,
+        pointHoverRadius:8,tension:0,fill:false
+      };
+    });
+
+    const ctx=document.getElementById('cSubTrends').getContext('2d');
+    if(cSubTrends)cSubTrends.destroy();
+    cSubTrends=new Chart(ctx,{type:'line',data:{labels,datasets},
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+        plugins:{
+          legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:10},boxWidth:12,padding:14}},
+          tooltip:{backgroundColor:'#0f1318',borderColor:'#1e2530',borderWidth:1,
+            titleColor:'#475569',bodyColor:'#e2e8f0',
+            titleFont:{family:'JetBrains Mono',size:10},bodyFont:{family:'JetBrains Mono',size:11},
+            padding:10,mode:'index',intersect:false,
+            callbacks:{
+              title:c=>'📅 '+c[0].label,
+              label:c=>c.raw!=null?'  '+c.dataset.label+': '+fmt(c.raw,5):null,
+              afterBody:c=>{
+                const i=c[0].dataIndex;
+                const note=history[i]&&history[i].note?['  📝 '+history[i].note]:[];
+                return note;
+              }
+            }
+          }
+        },
+        scales:{
+          x:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxRotation:30,maxTicksLimit:9},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}},
+          y:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxTicksLimit:7},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
+            title:{display:true,text:'Kaggle Score (lower = better)',color:'#475569',font:{family:'JetBrains Mono',size:9}}}
+        }
+      }
+    });
+    return;
+  }
+
+  // Fallback — flat lines from submissions list across all snapshots
   const s=snaps.filter(x=>x.score);if(!s.length)return;
   const subs=h.submissions||[];
-  const COLORS=['#22c55e','#f97316','#3b82f6','#eab308','#ec4899','#06b6d4','#8b5cf6'];
-  let ci=0;const fm={};
+  const fm={};
   subs.forEach(sub=>{if(!sub.file||!sub.score)return;fm[sub.file]={label:subLabel(sub),color:sub.selected?'#22c55e':COLORS[ci++%COLORS.length],selected:sub.selected,scores:[]};});
   s.forEach(()=>{subs.forEach(sub=>{if(fm[sub.file])fm[sub.file].scores.push(sub.score||null);});});
   const datasets=Object.values(fm).filter(d=>d.scores.some(v=>v!=null)).map(d=>({label:d.label,data:d.scores,borderColor:d.color,backgroundColor:d.color+'22',borderWidth:d.selected?3:1.5,borderDash:d.selected?[]:[4,3],pointBackgroundColor:d.color,pointBorderColor:'#080b10',pointBorderWidth:2,pointRadius:d.selected?5:3,pointHoverRadius:7,tension:0,fill:false}));
