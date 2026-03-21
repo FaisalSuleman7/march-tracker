@@ -239,7 +239,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
       <div class="pb">
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
           <span style="font-family:var(--display);font-size:52px;color:var(--orange);" id="games-count">—</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--muted);">/ 126</span>
+          <span style="font-family:var(--mono);font-size:12px;color:var(--muted);">/ 134</span>
         </div>
         <div style="background:var(--border);border-radius:6px;height:12px;overflow:hidden;margin-bottom:8px;">
           <div id="games-bar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,var(--orange),var(--yellow));transition:width .8s ease;width:0%;"></div>
@@ -347,7 +347,7 @@ const ROUNDS = [
   {name:'Final Four',           dates:'Apr 5',     start:'2026-04-05', end:'2026-04-05', games:2,  color:'#eab308'},
   {name:'Championship',         dates:'Apr 6',     start:'2026-04-06', end:'2026-04-06', games:1,  color:'#22c55e'},
 ];
-const TOTAL_GAMES = 126; // 63 men's + 63 women's NCAA tournament games
+const TOTAL_GAMES = 134; // 67 men's (4 play-in + 63) + 67 women's (4 play-in + 63)
 
 // ── Live Games Data ───────────────────────────────────────────────
 let liveGamesCache = null;
@@ -417,31 +417,31 @@ async function renderGamesScored(snaps){
   const last   = snaps[snaps.length-1];
   let games    = live.completed > 0 ? live.completed : (last&&last.games_scored!=null?last.games_scored*2:estimateGamesFromDate()*2);
   const source = live.completed > 0 ? '🔴 LIVE from ESPN' : '📊 estimated';
-  const pct    = Math.round((games/126)*100);
-  const splitInfo = live.menCompleted>0 ? ` · ♂ ${live.menCompleted}/63 men · ♀ ${live.womenCompleted}/63 women` : '';
+  const pct    = Math.round((games/134)*100);
+  const splitInfo = live.menCompleted>0 ? ` · ♂ ${live.menCompleted}/67 men · ♀ ${live.womenCompleted}/67 women` : '';
 
   set('games-count', games);
   document.getElementById('games-bar').style.width = pct+'%';
   set('games-sub', `${pct}% scored · ${source}${splitInfo}`);
 
   const stability = games===0   ? 'No games scored yet — leaderboard will be volatile'
-                  : games<32    ? 'Early stages — leaderboard very volatile, expect big swings'
-                  : games<64    ? 'Round 1 in progress — leaderboard stabilising'
-                  : games<96    ? 'Round 2 complete — scores becoming more reliable'
-                  : games<114   ? 'Sweet 16 + Elite 8 done — leaderboard quite stable'
-                  : games<124   ? 'Final Four done — nearly final'
-                  : games>=126  ? '🏆 All 126 games scored — FINAL LEADERBOARD'
+                  : games<32    ? 'Play-in + early rounds — leaderboard very volatile'
+                  : games<68    ? 'Round 1 in progress — leaderboard stabilising'
+                  : games<100   ? 'Round 2 complete — scores becoming more reliable'
+                  : games<118   ? 'Sweet 16 + Elite 8 done — leaderboard quite stable'
+                  : games<132   ? 'Final Four done — nearly final'
+                  : games>=134  ? '🏆 All 134 games scored — FINAL LEADERBOARD'
                   : 'Championship week — nearly settled';
   set('games-stability', stability);
 
-  // Mini round progress bars — each round has men's + women's games
   const ROUNDS_MINI=[
-    {name:'R1', games:64, end:'2026-03-23'},  // 32 men + 32 women
-    {name:'R2', games:32, end:'2026-03-23'},  // 16 + 16
-    {name:'S16',games:16, end:'2026-03-28'},  // 8 + 8
-    {name:'E8', games:8,  end:'2026-03-30'},  // 4 + 4
-    {name:'F4', games:4,  end:'2026-04-05'},  // 2 + 2
-    {name:'🏆', games:2,  end:'2026-04-07'},  // 1 + 1
+    {name:'P-in',games:8,  end:'2026-03-19'},  // 4 men + 4 women play-in
+    {name:'R1',  games:64, end:'2026-03-23'},  // 32 men + 32 women
+    {name:'R2',  games:32, end:'2026-03-23'},  // 16 + 16
+    {name:'S16', games:16, end:'2026-03-28'},  // 8 + 8
+    {name:'E8',  games:8,  end:'2026-03-30'},  // 4 + 4
+    {name:'F4',  games:4,  end:'2026-04-05'},  // 2 + 2
+    {name:'🏆',  games:2,  end:'2026-04-07'},  // 1 + 1
   ];
   let cum=0;
   document.getElementById('rounds-mini').innerHTML=ROUNDS_MINI.map(r=>{
