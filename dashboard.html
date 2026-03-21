@@ -337,7 +337,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
   <!-- History -->
   <div class="panel" style="margin-bottom:20px;">
     <div class="ph"><span class="pt">🕐 Snapshot History</span><span class="ps" id="snap-ct">0 snapshots</span></div>
-    <div style="padding:0 14px;" id="timeline"></div>
+    <div style="padding:0 14px;max-height:400px;overflow-y:auto;" id="timeline"></div>
   </div>
 
   <footer>
@@ -1455,6 +1455,11 @@ function switchTab(n){
   document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('tab'+n).classList.add('active');
   document.querySelectorAll('.tab-btn')[n-1].classList.add('active');
+  // Re-render analyzer charts when tab 2 becomes visible
+  // Charts rendered while hidden have zero dimensions — must re-render after display:block
+  if(n===2 && aResults.length && typeof Chart!=='undefined'){
+    setTimeout(()=>renderACharts(), 50);
+  }
 }
 
 // ── Prediction Analyzer ───────────────────────────────────────────
@@ -1857,7 +1862,9 @@ function renderAnalysis(){
     </tr>`;
   }).join('');
 
-  if(typeof Chart!=='undefined')renderACharts();
+  // Only render charts if tab 2 is currently visible, otherwise they'll render on tab switch
+  const tab2visible = document.getElementById('tab2').classList.contains('active');
+  if(typeof Chart!=='undefined' && tab2visible) renderACharts();
 }
 
 function renderACharts(){
