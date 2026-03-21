@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "username": "hmfaisal",
+    "competition": "march-machine-learning-mania-2026",
+    "created": "2026-03-21T14:26:08.316687+00:00"
+  },
+  "submissions": [
+    {
+      "file": "submission.csv",
+      "description": "",
+      "score": 0.19485,
+      "status": "error",
+      "date": "2026-03-11 10:00",
+      "selected": false,
+      "version": "?",
+      "local_brier": null,
+      "notes": "First submission"
+    },
+    {
+      "file": "submission_kaggle7.csv",
+      "description": "",
+      "score": 0.19538,
+      "status": "complete",
+      "date": "2026-03-16 11:41",
+      "selected": false,
+      "version": "v7",
+      "local_brier": 0.04595,
+      "notes": "Platt Scaling \u2014 BEST real score"
+    },
+    {
+      "file": "submission_kaggle1.csv",
+      "description": "",
+      "score": 0.20015,
+      "status": "error",
+      "date": "2026-03-11 11:26",
+      "selected": false,
+      "version": "v1?",
+      "local_brier": null,
+      "notes": "Error submission"
+    },
+    {
+      "file": "submission (1).csv",
+      "description": "",
+      "score": 0.20015,
+      "status": "error",
+      "date": "2026-03-11 10:17",
+      "selected": false,
+      "version": "?",
+      "local_brier": null,
+      "notes": "Error submission"
+    },
+    {
+      "file": "submission_kaggle2.csv",
+      "description": "",
+      "score": 0.24983,
+      "status": "error",
+      "date": "2026-03-11 13:52",
+      "selected": false,
+      "version": "v2?",
+      "local_brier": null,
+      "notes": "Error submission"
+    }
+  ],
+  "snapshots": [
+    {
+      "timestamp": "2026-03-21T14:26:08.316704+00:00",
+      "timestamp_readable": "2026-03-21 14:26 UTC",
+      "timestamp_local": "2026-03-21 14:26",
+      "rank": 3026,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 13.17,
+      "score": 0.19538,
+      "rank_change": null,
+      "score_change": null,
+      "top_score": 0.06562,
+      "top_team": "lookahead bias and pray",
+      "gap_to_top": 0.12976
+    }
+  ],
+  "best_rank": 3026,
+  "best_score": 0.19538
+}
