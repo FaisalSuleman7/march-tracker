@@ -254,36 +254,67 @@ def save_history(history, submissions=None):
         json.dump(history, f, indent=2)
 
 
-def estimate_games_scored(prev_score, curr_score, prev_snap=None):
+def fetch_kaggle_games_scored(username, key):
     """
-    Estimate how many of 63 total tournament games have been scored.
-    Uses the Brier score improvement as a proxy — more games = more stable scores.
-    This is an approximation based on typical scoring patterns.
+    Fetch Kaggle's official games scored count from the leaderboard page.
+    Kaggle shows: 'The Leaderboard is current through N games (X NCAAM & Y NCAAW)'
+    Returns total games scored (men + women), or None if can't fetch.
     """
-    # Tournament round game counts: R1=32, R2=16, S16=8, E8=4, F4=2, Championship=1
-    # We track this manually via the tournament schedule
+    import re
+    url = f'https://www.kaggle.com/api/v1/competitions/{COMPETITION}/leaderboard/view'
+    try:
+        resp = requests.get(
+            url,
+            headers={'Authorization': f'Bearer {key}'},
+            timeout=15
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            # Look for games count in leaderboard description
+            desc = str(data.get('description', '') or data.get('subtitle', '') or data)
+            match = re.search(r'through\s+(\d+)\s+games?\s*\((\d+)\s+NCAAM\s*[&amp;and]+\s*(\d+)\s+NCAAW\)', desc, re.IGNORECASE)
+            if match:
+                total = int(match.group(1))
+                print(f"   📊 Kaggle official games scored: {total} ({match.group(2)} NCAAM + {match.group(3)} NCAAW)")
+                return total
+    except Exception as e:
+        pass
+
+    # Fallback: estimate from schedule
     from datetime import date
     today = date.today()
-    # Count games by date (approximate — actual depends on Kaggle scoring)
     schedule = [
-        (date(2026, 3, 19), 8),   # Play-in games
+        (date(2026, 3, 19), 8),   # Play-in (4 men + 4 women)
         (date(2026, 3, 20), 8),   # R1 day 1
         (date(2026, 3, 21), 8),   # R1 day 2
         (date(2026, 3, 22), 8),   # R2 day 1
         (date(2026, 3, 23), 8),   # R2 day 2
-        (date(2026, 3, 27), 4),   # S16 day 1
-        (date(2026, 3, 28), 4),   # S16 day 2
-        (date(2026, 3, 29), 2),   # E8 day 1
-        (date(2026, 3, 30), 2),   # E8 day 2
-        (date(2026, 4,  5), 2),   # F4
-        (date(2026, 4,  6), 1),   # Championship
+        (date(2026, 3, 27), 8),   # S16 day 1
+        (date(2026, 3, 28), 8),   # S16 day 2
+        (date(2026, 3, 29), 4),   # E8 day 1
+        (date(2026, 3, 30), 4),   # E8 day 2
+        (date(2026, 4,  5), 4),   # F4
+        (date(2026, 4,  6), 2),   # Championship
     ]
     games = sum(g for d, g in schedule if d <= today)
-    return min(games, 63)
+    return min(games, 134)
+
+
+def estimate_games_scored(prev_score, curr_score, prev_snap=None):
+    """Legacy — kept for compatibility. Use fetch_kaggle_games_scored instead."""
+    from datetime import date
+    today = date.today()
+    schedule = [
+        (date(2026, 3, 19), 8),(date(2026, 3, 20), 8),(date(2026, 3, 21), 8),
+        (date(2026, 3, 22), 8),(date(2026, 3, 23), 8),(date(2026, 3, 27), 8),
+        (date(2026, 3, 28), 8),(date(2026, 3, 29), 4),(date(2026, 3, 30), 4),
+        (date(2026, 4,  5), 4),(date(2026, 4,  6), 2),
+    ]
+    return min(sum(g for d, g in schedule if d <= today), 134)
 
 
 def record_snapshot(history, rank, score, total, top_score, top_name,
-                    entries_count, top8=None):
+                    entries_count, top8=None, kaggle_games=None):
     from datetime import timedelta, date
     now       = datetime.now(timezone.utc)
     munich    = now + timedelta(hours=1)
@@ -293,7 +324,8 @@ def record_snapshot(history, rank, score, total, top_score, top_name,
     score_change = round(score - prev['score'], 6) if score and prev.get('score') else None
     percentile   = round((1 - rank / total) * 100, 2) if rank and total else None
     gap_to_top   = round(score - top_score, 6) if score and top_score else None
-    games_scored = estimate_games_scored(prev.get('score'), score)
+    # Use Kaggle's official count if available, else estimate
+    games_scored = kaggle_games if kaggle_games is not None else estimate_games_scored(prev.get('score'), score)
 
     snap = {
         'timestamp'         : now.isoformat(),
@@ -458,9 +490,14 @@ def run_check(verbose=True):
         for t in top8:
             print(f"   #{t['rank']}  {t['name']:<30}  {t['score']:.5f}")
 
+    # Fetch Kaggle's official games scored count
+    if verbose:
+        print(f"🎮 Fetching official games count from Kaggle...")
+    kaggle_games = fetch_kaggle_games_scored(username, key)
+
     history = load_history()
     snap    = record_snapshot(history, rank, score, total,
-                              top_score, top_name, len(scored), top8)
+                              top_score, top_name, len(scored), top8, kaggle_games)
     save_history(history, submissions if submissions else history.get('submissions'))
 
     if verbose:
