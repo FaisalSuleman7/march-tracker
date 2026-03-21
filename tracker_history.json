@@ -22,7 +22,7 @@
       "score": 0.19538,
       "status": "complete",
       "date": "2026-03-16 11:41",
-      "selected": false,
+      "selected": true,
       "version": "v7",
       "local_brier": 0.04595,
       "notes": "Platt Scaling \u2014 BEST real score"
@@ -75,7 +75,9 @@
       "score_change": null,
       "top_score": 0.05861,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.1398
+      "gap_to_top": 0.1398,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T13:41:39.687761+00:00",
@@ -90,7 +92,9 @@
       "score_change": -0.00303,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T13:51:41.017109+00:00",
@@ -105,7 +109,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T14:01:43.126911+00:00",
@@ -120,7 +126,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T14:11:45.343459+00:00",
@@ -135,7 +143,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T14:21:47.441840+00:00",
@@ -150,7 +160,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T14:26:08.316704+00:00",
@@ -165,7 +177,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T14:31:49.752033+00:00",
@@ -180,7 +194,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T14:41:51.849162+00:00",
@@ -195,7 +211,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T14:51:53.790868+00:00",
@@ -210,7 +228,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T14:52:53.933817+00:00",
@@ -225,7 +245,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T15:01:55.519035+00:00",
@@ -240,7 +262,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T15:11:57.827001+00:00",
@@ -255,7 +279,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T15:21:59.493350+00:00",
@@ -270,7 +296,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T15:25:49.513898+00:00",
@@ -285,7 +313,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T15:32:01.724175+00:00",
@@ -300,7 +330,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T15:49:09.876752+00:00",
@@ -315,7 +347,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T16:24:56.215655+00:00",
@@ -330,7 +364,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T16:56:58.528022+00:00",
@@ -345,7 +381,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     },
     {
       "timestamp": "2026-03-21T17:29:26.109138+00:00",
@@ -360,7 +398,9 @@
       "score_change": 0.0,
       "top_score": 0.06562,
       "top_team": "lookahead bias and pray",
-      "gap_to_top": 0.12976
+      "gap_to_top": 0.12976,
+      "games_scored": 24,
+      "top8": []
     }
   ],
   "best_rank": 3020,
@@ -390,5 +430,18 @@
         "submission.csv": 0.19485
       }
     }
-  ]
+  ],
+  "daily_summaries": {
+    "2026-03-21": {
+      "date": "2026-03-21",
+      "start_rank": 3020,
+      "start_score": 0.19841,
+      "best_rank": 3020,
+      "worst_rank": 3026,
+      "end_rank": 3026,
+      "end_score": 0.19538,
+      "checks": 20,
+      "games_scored": 24
+    }
+  }
 }
