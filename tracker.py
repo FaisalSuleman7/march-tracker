@@ -1,26 +1,18 @@
 #!/usr/bin/env python3
 """
 ================================================================
-MARCH MANIA 2026 — RANK TRACKER  v5
+MARCH MANIA 2026 — RANK TRACKER  v6
 ================================================================
-FEATURES:
-  - Fetches leaderboard via Kaggle API (KGAT token)
-  - Built-in web server so dashboard.html works in browser
-  - Auto-checks every 2 hours (configurable)
-  - Records exact timestamp of every check
-  - Detects and alerts on rank changes
-  - Saves full history to tracker_history.json
+Works both locally AND on GitHub Actions.
 
-RUN (does everything — tracking + web server):
-  py tracker.py
+LOCAL:
+  py tracker.py --interval 10
 
-CUSTOM INTERVAL (minutes):
-  py tracker.py --interval 60
+GITHUB ACTIONS:
+  python tracker.py --no-server --no-browser
+  (credentials come from KAGGLE_USERNAME / KAGGLE_KEY secrets)
 
-VIEW HISTORY ONLY:
-  py tracker.py --history
-
-THEN OPEN BROWSER:
+DASHBOARD:
   http://localhost:8765
 ================================================================
 """
@@ -42,19 +34,17 @@ from pathlib import Path
 try:
     import requests
 except ImportError:
-    print("Run: py -m pip install requests")
+    print("Run: pip install requests")
     sys.exit(1)
 
 # ── Config ─────────────────────────────────────────────────────
-COMPETITION    = 'march-machine-learning-mania-2026'
-YOUR_USERNAME  = 'hmfaisal'       # display name on leaderboard
-DEFAULT_INTERVAL_MINUTES = 120    # check every 2 hours
-WEB_PORT       = 8765
-HISTORY_FILE   = Path('tracker_history.json')
-DASHBOARD_FILE = Path('dashboard.html')
+COMPETITION              = 'march-machine-learning-mania-2026'
+YOUR_USERNAME            = 'hmfaisal'
+DEFAULT_INTERVAL_MINUTES = 120
+WEB_PORT                 = 8765
+HISTORY_FILE             = Path('tracker_history.json')
+DASHBOARD_FILE           = Path('dashboard.html')
 
-# Local knowledge about each submission — maps filename to version info
-# Score and description will be fetched live from Kaggle API
 SUBMISSION_META = {
     'submission_kaggle7.csv' : {'version': 'v7',  'local_brier': 0.04595, 'notes': 'Platt Scaling — BEST real score'},
     'submission_kaggle12.csv': {'version': 'v12', 'local_brier': None,    'notes': 'LuckAdj + Pressure'},
@@ -67,21 +57,23 @@ SUBMISSION_META = {
 
 
 # ── Credentials ─────────────────────────────────────────────────
+# Reads environment variables first (GitHub Actions),
+# then falls back to kaggle.json file (local PC).
 
 def load_creds():
-    # First try environment variables (GitHub Actions)
+    # GitHub Actions: credentials come from repository secrets
     env_user = os.environ.get('KAGGLE_USERNAME', '').strip()
     env_key  = os.environ.get('KAGGLE_KEY', '').strip()
     if env_user and env_key:
         print(f"✅ Credentials from environment — username: {env_user}")
         return env_user, env_key
 
-    # Fall back to kaggle.json file (local PC)
+    # Local PC: read from kaggle.json file
     local = Path('kaggle.json')
     if not local.exists():
-        print("❌ kaggle.json not found in this folder.")
-        print("   For GitHub Actions: add KAGGLE_USERNAME and KAGGLE_KEY as repository secrets")
-        print("   For local use: create kaggle.json with {\"username\":\"...\",\"key\":\"...\"}")
+        print("❌ No credentials found.")
+        print("   Local PC  : create kaggle.json with {\"username\":\"...\",\"key\":\"...\"}")
+        print("   GitHub    : add KAGGLE_USERNAME and KAGGLE_KEY as repository secrets")
         sys.exit(1)
     with open(local) as f:
         creds = json.load(f)
@@ -114,7 +106,7 @@ def fetch_leaderboard(username, key):
             if 'json' in ct:
                 return parse_json(resp.json())
         elif resp.status_code == 401:
-            print("   ❌ Auth failed (401) — check kaggle.json key")
+            print("   ❌ Auth failed (401) — check credentials")
         elif resp.status_code == 403:
             print("   ❌ Forbidden (403) — make sure you joined the competition")
         else:
@@ -178,10 +170,6 @@ def parse_json(data):
 # ── Submissions fetch ───────────────────────────────────────────
 
 def fetch_submissions(username, key):
-    """
-    Fetch your own submissions from Kaggle API.
-    Returns list of dicts with real filename, description, score, status, selected.
-    """
     url = f'https://www.kaggle.com/api/v1/competitions/submissions/list/{COMPETITION}'
     try:
         resp = requests.get(
@@ -191,27 +179,23 @@ def fetch_submissions(username, key):
             timeout=30
         )
         if resp.status_code == 200:
-            data = resp.json()
+            data  = resp.json()
             items = data if isinstance(data, list) else data.get('submissions', data.get('results', []))
-            subs = []
+            subs  = []
             for item in items:
-                # Extract all useful fields — Kaggle API field names vary by version
-                fname   = (item.get('fileName')    or item.get('file_name')    or
-                           item.get('description') or item.get('name')         or 'unknown')
-                desc    = (item.get('description') or item.get('publicDescription') or '')
-                score   = (item.get('publicScore') or item.get('public_score')  or
-                           item.get('score')       or None)
-                status  = (item.get('status')      or item.get('submissionStatus') or '')
-                date    = (item.get('date')         or item.get('submittedAt')  or
-                           item.get('submitted_at') or '')
-                selected= bool(item.get('selected') or item.get('isSelected')  or False)
-
+                fname    = (item.get('fileName')    or item.get('file_name')    or
+                            item.get('description') or item.get('name')         or 'unknown')
+                desc     = (item.get('description') or item.get('publicDescription') or '')
+                score    = (item.get('publicScore') or item.get('public_score')  or
+                            item.get('score')       or None)
+                status   = (item.get('status')      or item.get('submissionStatus') or '')
+                date     = (item.get('date')         or item.get('submittedAt')  or
+                            item.get('submitted_at') or '')
+                selected = bool(item.get('selected') or item.get('isSelected') or False)
                 try:
                     score = float(score) if score is not None else None
                 except (ValueError, TypeError):
                     score = None
-
-                # Match to local meta by filename
                 meta = SUBMISSION_META.get(fname, {})
                 subs.append({
                     'file'       : fname,
@@ -224,7 +208,6 @@ def fetch_submissions(username, key):
                     'local_brier': meta.get('local_brier'),
                     'notes'      : meta.get('notes', ''),
                 })
-            # Sort: selected first, then by score ascending (best first)
             subs.sort(key=lambda x: (not x['selected'], x['score'] or 99))
             return subs
         else:
@@ -255,11 +238,8 @@ def load_history():
         with open(HISTORY_FILE) as f:
             return json.load(f)
     return {
-        'meta': {
-            'username'   : YOUR_USERNAME,
-            'competition': COMPETITION,
-            'created'    : datetime.now(timezone.utc).isoformat(),
-        },
+        'meta'       : {'username': YOUR_USERNAME, 'competition': COMPETITION,
+                        'created': datetime.now(timezone.utc).isoformat()},
         'submissions': [],
         'snapshots'  : [],
         'best_rank'  : None,
@@ -275,9 +255,9 @@ def save_history(history, submissions=None):
 
 
 def record_snapshot(history, rank, score, total, top_score, top_name, entries_count):
-    now  = datetime.now(timezone.utc)
-    local_now = datetime.now()  # local time
-    prev = history['snapshots'][-1] if history['snapshots'] else {}
+    now       = datetime.now(timezone.utc)
+    local_now = datetime.now()
+    prev      = history['snapshots'][-1] if history['snapshots'] else {}
 
     rank_change  = (rank  - prev['rank'])  if rank  and prev.get('rank')  else None
     score_change = round(score - prev['score'], 6) if score and prev.get('score') else None
@@ -300,18 +280,16 @@ def record_snapshot(history, rank, score, total, top_score, top_name, entries_co
         'gap_to_top'        : gap_to_top,
     }
     history['snapshots'].append(snap)
-
     if rank  and (history['best_rank']  is None or rank  < history['best_rank']):
         history['best_rank']  = rank
     if score and (history['best_score'] is None or score < history['best_score']):
         history['best_score'] = score
-
     return snap
 
 
 # ── Terminal display ────────────────────────────────────────────
 
-def print_snap(snap, history, show_history=True):
+def print_snap(snap, history):
     rank  = snap.get('rank')
     total = snap.get('total_teams')
     score = snap.get('score')
@@ -320,7 +298,7 @@ def print_snap(snap, history, show_history=True):
     sc    = snap.get('score_change')
     top   = snap.get('top_score')
     gap   = snap.get('gap_to_top')
-    ts    = snap.get('timestamp_local', snap.get('timestamp_readable', snap.get('timestamp','')[:16]))
+    ts    = snap.get('timestamp_local', snap.get('timestamp_readable', ''))
 
     W = 60
     print()
@@ -336,38 +314,35 @@ def print_snap(snap, history, show_history=True):
               "  → no change"             if rc == 0 else "")
         print(f"  🏆 Rank        : #{rank} / {total}{ch}")
         print(f"  📊 Percentile  : top {100 - pct:.1f}% of all teams")
-        sc_str = f"  ({sc:+.6f})" if sc is not None else ""
-        print(f"  🎯 Score       : {score:.6f}{sc_str}")
+        sc_str = f"  ({sc:+.5f})" if sc is not None else ""
+        print(f"  🎯 Score       : {score:.5f}{sc_str}")
         if top:
-            print(f"  👑 Leader      : {top:.6f}  (you are {gap:+.6f} behind)")
+            print(f"  👑 Leader      : {top:.5f}  (gap {gap:+.5f})")
     else:
         print(f"  ❓ '{YOUR_USERNAME}' not found  |  Total teams: {total}")
 
     print(f"  {'─' * (W-4)}")
     br = history.get('best_rank')
     bs = history.get('best_score')
-    print(f"  ★ Best rank    : #{br}" if br else "  ★ Best rank    : —")
-    print(f"  ★ Best score   : {bs:.6f}" if bs else "  ★ Best score   : —")
-    print(f"  {'─' * (W-4)}")
-    print(f"  ✓ Active submission: v7  Kaggle={0.19841}  LocalBrier={0.04595}")
+    print(f"  ★ Best rank  : #{br}" if br else "  ★ Best rank  : —")
+    print(f"  ★ Best score : {bs:.5f}" if bs else "  ★ Best score : —")
 
     snaps = history.get('snapshots', [])
-    if show_history and len(snaps) > 1:
+    if len(snaps) > 1:
         print(f"\n  📈 History ({len(snaps)} snapshots):")
-        print(f"  {'Time':<22} {'Rank':>7} {'Score':>10} {'Δ Rank':>8}")
-        print(f"  {'─' * 52}")
-        for s in snaps[-12:]:
-            t   = s.get('timestamp_local', s.get('timestamp_readable', s['timestamp'][:16]))
-            r   = f"#{s['rank']}" if s.get('rank') else '—'
-            sc2 = f"{s['score']:.5f}" if s.get('score') else '—'
-            c   = s.get('rank_change')
-            ch2 = (f"↑{abs(c)}" if c and c < 0 else
-                   f"↓{c}"      if c and c > 0 else
-                   "→"          if c == 0 else '—')
-            print(f"  {t:<22} {r:>7} {sc2:>10} {ch2:>8}")
+        print(f"  {'Time':<22} {'Rank':>7} {'Score':>10} {'Δ':>6}")
+        print(f"  {'─' * 50}")
+        for s in snaps[-10:]:
+            t  = s.get('timestamp_local', s.get('timestamp_readable', s['timestamp'][:16]))
+            r  = f"#{s['rank']}" if s.get('rank') else '—'
+            sc2= f"{s['score']:.5f}" if s.get('score') else '—'
+            c  = s.get('rank_change')
+            ch2= (f"↑{abs(c)}" if c and c < 0 else
+                  f"↓{c}"      if c and c > 0 else
+                  "→"          if c == 0 else '—')
+            print(f"  {t:<22} {r:>7} {sc2:>10} {ch2:>6}")
 
     print()
-    print(f"  💾 {HISTORY_FILE}  |  🌐 http://localhost:{WEB_PORT}")
     print("═" * W)
 
     if rc is not None and abs(rc) >= 100:
@@ -384,21 +359,14 @@ def run_check(verbose=True):
         print(f"📡 Fetching leaderboard ({datetime.now().strftime('%H:%M:%S')})...")
 
     entries = fetch_leaderboard(username, key)
-
     if not entries:
         print("❌ Could not fetch leaderboard.")
-        print(f"\n   Manual fallback:")
-        print(f"   1. Download CSV from: https://www.kaggle.com/competitions/{COMPETITION}/leaderboard")
-        print(f"   2. Save as 'leaderboard.csv' in this folder")
-        print(f"   3. Run: py tracker.py --from-file leaderboard.csv")
-        return None
+        sys.exit(1)
 
     if verbose:
         print(f"   ✅ Got {len(entries)} entries")
-
-    # Fetch your submissions with real names/scores from Kaggle
-    if verbose:
         print(f"📋 Fetching your submissions...")
+
     submissions = fetch_submissions(username, key)
     if verbose:
         if submissions:
@@ -406,9 +374,9 @@ def run_check(verbose=True):
             for s in submissions:
                 sel = ' ✓ SELECTED' if s['selected'] else ''
                 sc  = f"{s['score']:.5f}" if s['score'] else 'N/A'
-                print(f"   {s['file']:<35} score={sc}  status={s['status']}{sel}")
+                print(f"   {s['file']:<35} score={sc}{sel}")
         else:
-            print(f"   ⚠️  Could not fetch submissions (leaderboard still works)")
+            print(f"   ⚠️  Could not fetch submissions")
 
     rank, score, total, scored = find_rank(entries)
 
@@ -416,7 +384,6 @@ def run_check(verbose=True):
         print(f"\n⚠️  '{YOUR_USERNAME}' not found. Sample names:")
         for e in scored[:5]:
             print(f"   '{e['name']}'  {e['score']:.5f}")
-        print(f"\n   Edit YOUR_USERNAME in tracker.py if your display name differs")
 
     top       = scored[0] if scored else None
     top_score = top['score'] if top else None
@@ -436,29 +403,20 @@ def run_check(verbose=True):
 # ── Watch mode ──────────────────────────────────────────────────
 
 def watch_mode(interval_minutes):
-    print(f"\n🔄 WATCH MODE — checking every {interval_minutes} minutes")
-    print(f"   Dashboard → http://localhost:{WEB_PORT}")
-    print(f"   Press Ctrl+C to stop\n")
-
+    print(f"\n🔄 WATCH MODE — every {interval_minutes} min  (Ctrl+C to stop)\n")
     count = 0
     while True:
         count += 1
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"\n{'─'*50}")
-        print(f"[Check #{count}]  {now}")
-        print(f"{'─'*50}")
+        print(f"\n{'─'*50}\n[Check #{count}]  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{'─'*50}")
         try:
             run_check(verbose=True)
         except KeyboardInterrupt:
             raise
         except Exception as e:
-            print(f"⚠️  Error during check: {e}")
+            print(f"⚠️  Error: {e}")
 
-        next_time = datetime.fromtimestamp(
-            time.time() + interval_minutes * 60
-        ).strftime('%H:%M:%S')
-        print(f"\n⏳ Next check at {next_time}  ({interval_minutes} min)  |  Ctrl+C to stop")
-
+        next_time = datetime.fromtimestamp(time.time() + interval_minutes*60).strftime('%H:%M:%S')
+        print(f"\n⏳ Next check at {next_time}  |  Ctrl+C to stop")
         try:
             time.sleep(interval_minutes * 60)
         except KeyboardInterrupt:
@@ -468,26 +426,18 @@ def watch_mode(interval_minutes):
 # ── Web server ──────────────────────────────────────────────────
 
 class TrackerHandler(http.server.SimpleHTTPRequestHandler):
-    """Serve dashboard.html and tracker_history.json from current directory."""
-
-    def log_message(self, format, *args):
-        pass  # suppress noisy server logs
-
+    def log_message(self, format, *args): pass
     def do_GET(self):
-        # Serve root as dashboard.html
-        if self.path == '/' or self.path == '':
+        if self.path in ('/', ''):
             self.path = '/dashboard.html'
         super().do_GET()
-
     def end_headers(self):
-        # Allow JS to read local files
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
         self.send_header('Access-Control-Allow-Origin', '*')
         super().end_headers()
 
 
 def start_web_server():
-    """Start web server in background thread."""
     os.chdir(Path(__file__).parent)
     server = http.server.HTTPServer(('localhost', WEB_PORT), TrackerHandler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -506,16 +456,13 @@ def run_from_file(filepath):
     if not entries:
         print("❌ Could not parse CSV.")
         return
-
     print(f"   ✅ Got {len(entries)} entries")
     rank, score, total, scored = find_rank(entries)
     top       = scored[0] if scored else None
     top_score = top['score'] if top else None
     top_name  = top['name']  if top else '?'
-
-    history = load_history()
-    snap    = record_snapshot(history, rank, score, total,
-                              top_score, top_name, len(scored))
+    history   = load_history()
+    snap      = record_snapshot(history, rank, score, total, top_score, top_name, len(scored))
     save_history(history)
     print_snap(snap, history)
 
@@ -525,35 +472,31 @@ def run_from_file(filepath):
 def print_history():
     h     = load_history()
     snaps = h.get('snapshots', [])
-    print(f"\n📊 Full history — {len(snaps)} snapshots  |  "
-          f"Best rank: #{h.get('best_rank','—')}  Best score: {h.get('best_score','—')}")
+    print(f"\n📊 {len(snaps)} snapshots  |  Best rank: #{h.get('best_rank','—')}  Best score: {h.get('best_score','—')}")
     if not snaps:
-        print("   No data yet. Run: py tracker.py")
+        print("   No data yet.")
         return
-    print(f"\n{'Time':<24} {'Rank':>8} {'Score':>10} {'Δ Rank':>8} {'Leader':>10}")
-    print("─" * 65)
+    print(f"\n{'Time':<24} {'Rank':>8} {'Score':>10} {'Δ':>6} {'Leader':>10}")
+    print("─" * 62)
     for s in snaps:
-        t   = s.get('timestamp_readable', s['timestamp'][:16])
-        r   = f"#{s['rank']}" if s.get('rank') else '—'
-        sc  = f"{s['score']:.5f}" if s.get('score') else '—'
-        c   = s.get('rank_change')
-        ch  = (f"↑{abs(c)}" if c and c < 0 else
-               f"↓{c}"      if c and c > 0 else "—")
-        top = f"{s['top_score']:.5f}" if s.get('top_score') else '—'
-        print(f"{t:<24} {r:>8} {sc:>10} {ch:>8} {top:>10}")
+        t  = s.get('timestamp_local', s['timestamp'][:16])
+        r  = f"#{s['rank']}" if s.get('rank') else '—'
+        sc = f"{s['score']:.5f}" if s.get('score') else '—'
+        c  = s.get('rank_change')
+        ch = (f"↑{abs(c)}" if c and c < 0 else f"↓{c}" if c and c > 0 else "—")
+        tp = f"{s['top_score']:.5f}" if s.get('top_score') else '—'
+        print(f"{t:<24} {r:>8} {sc:>10} {ch:>6} {tp:>10}")
 
 
 # ── Entry point ─────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description='March Mania 2026 Rank Tracker')
-    parser.add_argument('--interval',  type=int, default=DEFAULT_INTERVAL_MINUTES,
-                        help=f'Minutes between checks (default: {DEFAULT_INTERVAL_MINUTES})')
-    parser.add_argument('--history',   action='store_true', help='Print history and exit')
-    parser.add_argument('--no-server', action='store_true', help='Skip web server')
-    parser.add_argument('--no-browser',action='store_true', help='Do not open browser')
-    parser.add_argument('--from-file', type=str, metavar='FILE',
-                        help='Load leaderboard from manually downloaded CSV')
+    parser.add_argument('--interval',   type=int, default=DEFAULT_INTERVAL_MINUTES)
+    parser.add_argument('--history',    action='store_true')
+    parser.add_argument('--no-server',  action='store_true', help='Skip web server (GitHub Actions)')
+    parser.add_argument('--no-browser', action='store_true', help='Skip opening browser')
+    parser.add_argument('--from-file',  type=str, metavar='FILE')
     args = parser.parse_args()
 
     if args.history:
@@ -564,14 +507,19 @@ def main():
         run_from_file(args.from_file)
         return
 
-    # Start web server
-    if not args.no_server and DASHBOARD_FILE.exists():
+    # GitHub Actions mode: single check then exit
+    if args.no_server:
+        print("🤖 GitHub Actions mode — single check")
+        run_check(verbose=True)
+        return
+
+    # Local PC mode: web server + watch loop
+    if DASHBOARD_FILE.exists():
         start_web_server()
         if not args.no_browser:
             time.sleep(0.5)
             webbrowser.open(f'http://localhost:{WEB_PORT}')
 
-    # Watch mode handles the first check itself
     try:
         watch_mode(args.interval)
     except KeyboardInterrupt:
