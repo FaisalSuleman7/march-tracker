@@ -141,8 +141,30 @@ tr:hover td{background:rgba(249,115,22,.02);}
 .day-row.header{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 16px;background:var(--surface);}
 
 .pb-0{padding:0;}
-background:var(--card);border:1px solid var(--yellow);border-radius:12px;padding:18px 22px;margin-bottom:18px;font-family:var(--mono);font-size:12px;line-height:2;display:none;}
+#warn{background:var(--card);border:1px solid var(--yellow);border-radius:12px;padding:18px 22px;margin-bottom:18px;font-family:var(--mono);font-size:12px;line-height:2;display:none;}
 #warn h3{color:var(--yellow);margin-bottom:6px;}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--border);}
+.tab-btn{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:9px 20px;border:none;background:transparent;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--orange);border-bottom-color:var(--orange);}
+.tab-btn.t2.active{color:var(--purple);border-bottom-color:var(--purple);}
+.tab-content{display:none;}.tab-content.active{display:block;}
+
+/* ── Analyzer (tab 2) ── */
+#upload-zone{border:2px dashed var(--border);border-radius:14px;padding:36px;text-align:center;margin-bottom:18px;transition:all .2s;cursor:pointer;background:var(--card);}
+#upload-zone:hover,#upload-zone.drag{border-color:var(--purple);background:rgba(139,92,246,.05);}
+#upload-zone h3{font-family:var(--display);font-size:26px;color:var(--purple);margin-bottom:8px;}
+#upload-zone p{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:2;}
+#file-input{display:none;}
+#status-bar{font-family:var(--mono);font-size:11px;color:var(--muted);padding:10px 16px;background:var(--surface);border-radius:8px;margin-bottom:16px;display:none;}
+.card.pu::before{background:linear-gradient(90deg,var(--purple),transparent);}
+.card.re::before{background:linear-gradient(90deg,var(--red),transparent);}
+.cval.pu{color:var(--purple);}.cval.re{color:var(--red);}
+tr.correct td{background:rgba(34,197,94,.03);}
+tr.wrong td{background:rgba(239,68,68,.03);}
+.badge.upset{background:rgba(249,115,22,.15);color:var(--orange);}
 
 /* footer */
 footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted);padding-top:16px;border-top:1px solid var(--border);margin-top:4px;line-height:2.4;}
@@ -164,6 +186,15 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
       <button class="btn" onclick="load()">↻ REFRESH</button>
     </div>
   </header>
+
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(1)">🏀 Rank Tracker</button>
+    <button class="tab-btn t2" onclick="switchTab(2)">🔬 Prediction Analyzer</button>
+  </div>
+
+  <!-- TAB 1: Main Dashboard -->
+  <div id="tab1" class="tab-content active">
 
   <!-- Game Day Banner -->
   <div id="gameday-banner">
@@ -313,6 +344,73 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
     <div>Last updated: <span class="hi" id="last-footer">—</span> &nbsp;·&nbsp; Auto-refreshes every 60s</div>
     <div>Next GitHub Actions check: <span class="hi" id="next-check">—</span></div>
   </footer>
+
+  </div><!-- end tab1 -->
+
+  <!-- TAB 2: Prediction Analyzer -->
+  <div id="tab2" class="tab-content">
+
+    <div id="upload-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="handleDrop(event)">
+      <h3>📁 DROP YOUR PREDICTION CSV HERE</h3>
+      <p>Drop <code style="background:var(--surface);padding:2px 6px;border-radius:3px;color:var(--orange);">submission_kaggle7.csv</code> or click to browse</p>
+      <p style="margin-top:6px;">Format: <code style="background:var(--surface);padding:2px 6px;border-radius:3px;color:var(--orange);">ID,Pred</code> — ID = <code style="background:var(--surface);padding:2px 6px;border-radius:3px;color:var(--orange);">2026_1101_1102</code> · Pred = P(lower TeamID wins)</p>
+      <p style="color:var(--green);margin-top:10px;font-family:var(--mono);font-size:11px;" id="file-status">No file loaded yet</p>
+    </div>
+    <input type="file" id="file-input" accept=".csv" onchange="loadCSV(this.files[0])">
+
+    <div id="status-bar"></div>
+
+    <div class="stats" id="a-stats-row" style="display:none;">
+      <div class="card pu"><div class="clabel">Your Real Brier</div><div class="cval pu" id="a-brier" style="font-size:32px;padding-top:6px;">—</div><div class="csub" id="a-brier-sub">before Kaggle updates</div></div>
+      <div class="card gr"><div class="clabel">Games Matched</div><div class="cval gr" id="a-games">—</div><div class="csub" id="a-games-sub">of 134 total</div></div>
+      <div class="card or"><div class="clabel">Correct Direction</div><div class="cval or" id="a-correct">—</div><div class="csub" id="a-correct-sub">predicted winner right</div></div>
+      <div class="card re"><div class="clabel">Upsets Caught</div><div class="cval re" id="a-upsets">—</div><div class="csub">underdog wins predicted</div></div>
+      <div class="card bl"><div class="clabel">vs Kaggle Score</div><div class="cval bl" id="a-gap" style="font-size:28px;padding-top:8px;">—</div><div class="csub" id="a-gap-sub">Kaggle: 0.19538</div></div>
+    </div>
+
+    <div class="grid2" id="a-charts-row" style="display:none;">
+      <div class="panel">
+        <div class="ph"><span class="pt" style="color:var(--purple);">📈 Running Brier Score</span><span class="ps">as each game is scored · lower = better</span></div>
+        <div class="chart-wrap"><canvas id="cBrier"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span class="pt" style="color:var(--purple);">📊 Prediction Accuracy by Confidence</span><span class="ps">how confident vs how correct</span></div>
+        <div class="chart-wrap"><canvas id="cDist"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid2" id="a-split-row" style="display:none;">
+      <div class="panel">
+        <div class="ph"><span class="pt" style="color:var(--purple);">♂ Men's Tournament</span><span class="ps" id="a-mens-sub">—</span></div>
+        <div class="pb" id="a-mens-panel"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span class="pt" style="color:var(--purple);">♀ Women's Tournament</span><span class="ps" id="a-womens-sub">—</span></div>
+        <div class="pb" id="a-womens-panel"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="a-games-panel" style="display:none;margin-bottom:20px;">
+      <div class="ph">
+        <span class="pt" style="color:var(--purple);">🎮 Game by Game Results</span>
+        <span class="ps" id="a-games-table-sub">—</span>
+      </div>
+      <div style="max-height:500px;overflow-y:auto;">
+        <table>
+          <thead><tr><th>♂♀</th><th>Teams</th><th>Result</th><th>Your Pred</th><th>Brier</th><th>Assessment</th></tr></thead>
+          <tbody id="a-games-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;padding:12px 0;border-top:1px solid var(--border);">
+      Results from ESPN · Kaggle TeamID format · Pred = P(lower TeamID wins) · auto-refreshes every 2 min
+    </div>
+
+  </div><!-- end tab2 -->
 
 </div>
 <script>
@@ -1300,6 +1398,231 @@ setInterval(async()=>{
   const data = await fetchLiveGames();
   renderLiveGames(parseESPN(data));
 }, 60000);
+
+// ── Tab switching ─────────────────────────────────────────────────
+function switchTab(n){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab'+n).classList.add('active');
+  document.querySelectorAll('.tab-btn')[n-1].classList.add('active');
+}
+
+// ── Prediction Analyzer ───────────────────────────────────────────
+let aPredictions={},aResults=[],cBrier=null,cDist=null;
+
+const TEAM_IDS_M={
+  'Duke':1181,'Kentucky':1246,'Houston':1220,'Florida':1196,'Auburn':1116,
+  'Iowa St':1233,'Tennessee':1397,'Michigan St':1277,'Texas Tech':1400,
+  'Arizona':1112,'Alabama':1102,'Purdue':1340,'Kansas':1242,'UConn':1163,
+  'Connecticut':1163,'Villanova':1437,'Gonzaga':1211,'Virginia':1438,
+  'Michigan':1276,'Maryland':1266,'UCLA':1420,'Illinois':1224,'Arkansas':1109,
+  'Iowa':1231,'Texas':1399,'Nebraska':1291,'Utah St':1427,'Oregon':1316,
+  'Clemson':1161,'NC State':1303,'Washington':1447,'Baylor':1124,
+  'Colorado St':1166,'Virginia Tech':1439,'Louisville':1262,'TCU':1396,
+  'Texas A&M':1398,'VCU':1432,'Vanderbilt':1435,'Dayton':1173,
+  'Nevada':1295,'Liberty':1259,'Georgia':1203,'South Carolina':1371,
+  'Notre Dame':1313,'Southern':1384,'James Madison':1237,'Fairfield':1191,
+  'Rhode Island':1348,'Murray St':1286,'S Dakota St':1356,'Akron':1103,
+  'Missouri':1282,'Cal Baptist':1140,'Furman':1199,'High Point':1218,
+  'Queens':1343,'Miami FL':1272,'Miami (FL)':1272,'GW':1207,
+  'New Mexico':1299,'Oklahoma St':1317,'Okla St':1317,'Cal':1139,
+  'UNCW':1414,'Northern Iowa':1307,'UCF':1415,'SJU':1390,
+  'St. John\'s':1390,'Wichita St':1451,'UNLV':1423,
+};
+const TEAM_IDS_W={
+  'South Carolina':3417,'UConn':3163,'Texas':3400,'Tennessee':3397,
+  'Notre Dame':3313,'Stanford':3390,'NC State':3303,'Maryland':3266,
+  'Oregon':3316,'Texas Tech':3400,'Virginia Tech':3439,'LSU':3263,
+  'Iowa':3231,'UCLA':3420,'Washington':3447,'Baylor':3124,
+  'Michigan St':3277,'Colorado St':3166,'Gonzaga':3211,'Murray St':3286,
+  'S Dakota St':3356,'Nebraska':3291,'Virginia':3438,'Georgia':3203,
+  'Alabama':3102,'Rhode Island':3348,'Fairfield':3191,'UTSA':3428,
+  'Kentucky':3246,'Villanova':3437,'Michigan':3276,'Arizona':3112,
+  'Ole Miss':3314,'Maryland':3266,'Ole Miss':3314,
+};
+
+function aStatus(msg){const el=document.getElementById('status-bar');el.style.display='block';el.textContent='ℹ️ '+msg;}
+
+function loadCSV(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.trim().split('\n');
+    aPredictions={};let count=0;
+    for(const line of lines.slice(1)){
+      const[id,pred]=line.split(',');
+      if(id&&pred){aPredictions[id.trim()]=parseFloat(pred.trim());count++;}
+    }
+    document.getElementById('file-status').textContent=`✅ Loaded ${count.toLocaleString()} predictions from ${file.name}`;
+    document.getElementById('file-status').style.color='var(--green)';
+    document.getElementById('upload-zone').style.borderColor='var(--green)';
+    aStatus(`Loaded ${count.toLocaleString()} predictions. Fetching game results...`);
+    runAnalysis();
+  };
+  reader.readAsText(file);
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const file=e.dataTransfer.files[0];
+  if(file)loadCSV(file);
+}
+
+function getTeamID(name,gender){
+  const map=gender==='♀'?TEAM_IDS_W:TEAM_IDS_M;
+  if(map[name])return map[name];
+  for(const[k,v]of Object.entries(map)){
+    if(name&&k&&(name.toLowerCase().includes(k.toLowerCase())||k.toLowerCase().includes(name.toLowerCase())))return v;
+  }
+  return null;
+}
+
+async function runAnalysis(){
+  if(!Object.keys(aPredictions).length){aStatus('Load your prediction CSV first');return;}
+  aStatus('Fetching game results from ESPN...');
+  const raw=await fetchLiveGames();
+  const parsed=parseESPN(raw);
+  const scored=[];let matched=0,unmatched=0;
+
+  for(const g of parsed.games.filter(x=>x.completed)){
+    const homeID=getTeamID(g.homeTeam,g.gender);
+    const awayID=getTeamID(g.awayTeam,g.gender);
+    if(!homeID||!awayID){unmatched++;continue;}
+    const lo=Math.min(homeID,awayID),hi=Math.max(homeID,awayID);
+    const key=`2026_${lo}_${hi}`;
+    const pred=aPredictions[key];
+    if(pred===undefined){unmatched++;continue;}
+    const loIsHome=homeID===lo;
+    const homeWon=parseInt(g.homeScore||0)>parseInt(g.awayScore||0);
+    const loWon=loIsHome?homeWon:!homeWon;
+    const outcome=loWon?1:0;
+    const brier=Math.pow(pred-outcome,2);
+    const loName=loIsHome?g.homeTeam:g.awayTeam;
+    const hiName=loIsHome?g.awayTeam:g.homeTeam;
+    const loScore=loIsHome?g.homeScore:g.awayScore;
+    const hiScore=loIsHome?g.awayScore:g.homeScore;
+    scored.push({gender:g.gender,key,pred,outcome,brier,loName,hiName,loScore,hiScore,loWon,
+      predictedCorrectly:(loWon&&pred>=0.5)||(!loWon&&pred<0.5),
+      isUpset:(loWon&&pred<0.4)||(!loWon&&pred>0.6)});
+    matched++;
+  }
+
+  aStatus(`Matched ${matched} games · ${unmatched} unmatched · refreshes every 2 min`);
+  if(!scored.length)return;
+  aResults=scored;
+  renderAnalysis();
+}
+
+function renderAnalysis(){
+  const R=aResults;if(!R.length)return;
+  const totalBrier=R.reduce((s,g)=>s+g.brier,0)/R.length;
+  const correct=R.filter(g=>g.predictedCorrectly).length;
+  const upsets=R.filter(g=>g.isUpset).length;
+  const kaggleBrier=0.19538;
+
+  ['a-stats-row','a-charts-row','a-split-row','a-games-panel'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=id==='a-stats-row'?'grid':'block';
+  });
+
+  const aSet=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const aSetH=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
+
+  aSet('a-brier',fmt(totalBrier,5));
+  aSet('a-brier-sub',`Kaggle shows: ${fmt(kaggleBrier,5)}`);
+  aSet('a-games',R.length);
+  aSet('a-games-sub',`of 134 total (${Math.round(R.length/134*100)}%)`);
+  aSet('a-correct',Math.round(correct/R.length*100)+'%');
+  aSet('a-correct-sub',`${correct} of ${R.length} games`);
+  aSet('a-upsets',upsets);
+  const diff=totalBrier-kaggleBrier;
+  aSet('a-gap',(diff>0?'+':'')+fmt(diff,5));
+  aSet('a-gap-sub',diff<0?'🎉 better than Kaggle!':'vs your Kaggle score');
+
+  const renderSplit=(games,elId,subId)=>{
+    if(!games.length){aSetH(elId,'<div class="empty">No scored games yet</div>');return;}
+    const b=games.reduce((s,g)=>s+g.brier,0)/games.length;
+    const c=games.filter(g=>g.predictedCorrectly).length;
+    aSet(subId,`Brier: ${fmt(b,5)} · ${c}/${games.length} correct`);
+    aSetH(elId,`<div style="display:flex;gap:20px;margin-bottom:12px;">
+      <div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px;">BRIER</div><div style="font-family:var(--display);font-size:30px;color:var(--purple);">${fmt(b,5)}</div></div>
+      <div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px;">ACCURACY</div><div style="font-family:var(--display);font-size:30px;color:var(--green);">${Math.round(c/games.length*100)}%</div></div>
+      <div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px;">GAMES</div><div style="font-family:var(--display);font-size:30px;color:var(--orange);">${games.length}</div></div>
+    </div>
+    ${games.slice(0,4).map(g=>`<div style="padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;display:flex;justify-content:space-between;">
+      <span style="color:${g.loWon?'var(--text)':'var(--muted)'};">${g.loName} ${g.loScore}</span>
+      <span style="color:var(--muted);">vs</span>
+      <span style="color:${!g.loWon?'var(--text)':'var(--muted)'};">${g.hiScore} ${g.hiName}</span>
+      <span style="color:${g.predictedCorrectly?'var(--green)':'var(--red)'};">${fmt(g.brier,5)}</span>
+    </div>`).join('')}`);
+  };
+  renderSplit(R.filter(g=>g.gender==='♂'),'a-mens-panel','a-mens-sub');
+  renderSplit(R.filter(g=>g.gender==='♀'),'a-womens-panel','a-womens-sub');
+
+  aSet('a-games-table-sub',`${R.length} games · worst Brier first`);
+  document.getElementById('a-games-tbody').innerHTML=[...R].sort((a,b)=>b.brier-a.brier).map(g=>{
+    const asmt=g.isUpset?'<span class="badge upset">🔥 upset</span>'
+              :g.brier<0.05?'<span class="badge up">excellent</span>'
+              :g.brier<0.15?'<span class="badge nc">good</span>'
+              :g.brier<0.25?'<span class="badge nc">ok</span>'
+              :'<span class="badge dn">miss</span>';
+    return`<tr class="${g.predictedCorrectly?'correct':'wrong'}">
+      <td>${g.gender}</td>
+      <td style="font-size:10px;">${g.loName} vs ${g.hiName}</td>
+      <td style="font-size:10px;">${g.loWon?`<b>${g.loName}</b> ${g.loScore}–${g.hiScore} ${g.hiName}`:`${g.loName} ${g.loScore}–${g.hiScore} <b>${g.hiName}</b>`}</td>
+      <td style="color:var(--blue);font-size:10px;">${fmt(g.pred,3)} → ${g.loName}</td>
+      <td style="color:${g.brier<0.1?'var(--green)':g.brier>0.3?'var(--red)':'var(--text)'};">${fmt(g.brier,5)}</td>
+      <td>${asmt}</td>
+    </tr>`;
+  }).join('');
+
+  if(typeof Chart!=='undefined')renderACharts();
+}
+
+function renderACharts(){
+  const byDate=[...aResults].sort((a,b)=>new Date(a.date||0)-new Date(b.date||0));
+  const labels=[],running=[];let sum=0;
+  byDate.forEach((g,i)=>{sum+=g.brier;labels.push(`G${i+1}`);running.push(parseFloat((sum/(i+1)).toFixed(5)));});
+
+  const ctx1=document.getElementById('cBrier').getContext('2d');
+  if(cBrier)cBrier.destroy();
+  const gr=ctx1.createLinearGradient(0,0,0,220);
+  gr.addColorStop(0,'rgba(139,92,246,.25)');gr.addColorStop(1,'rgba(139,92,246,.02)');
+  cBrier=new Chart(ctx1,{type:'line',data:{labels,datasets:[
+    {label:'Your running Brier',data:running,borderColor:'#8b5cf6',backgroundColor:gr,borderWidth:2.5,pointRadius:3,pointHoverRadius:6,tension:.4,fill:true},
+    {label:'Kaggle (0.19538)',data:labels.map(()=>0.19538),borderColor:'rgba(249,115,22,.6)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,4],pointRadius:0},
+  ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
+    plugins:{legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:9},boxWidth:10,padding:10}}},
+    scales:{
+      x:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:10},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}},
+      y:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:6},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
+        title:{display:true,text:'Brier Score',color:'#475569',font:{family:'JetBrains Mono',size:8}}}
+    }}});
+
+  const bins=10,binData=Array(bins).fill(null).map(()=>({sum:0,count:0}));
+  aResults.forEach(g=>{const b=Math.min(Math.floor(g.pred*bins),bins-1);binData[b].sum+=g.brier;binData[b].count++;});
+  const ctx2=document.getElementById('cDist').getContext('2d');
+  if(cDist)cDist.destroy();
+  cDist=new Chart(ctx2,{type:'bar',data:{
+    labels:binData.map((_,i)=>`${i*10}–${(i+1)*10}%`),
+    datasets:[
+      {label:'Avg Brier',data:binData.map(d=>d.count?parseFloat((d.sum/d.count).toFixed(5)):null),
+       backgroundColor:binData.map(d=>!d.count?'transparent':d.sum/d.count<0.1?'rgba(34,197,94,.6)':d.sum/d.count>0.2?'rgba(239,68,68,.6)':'rgba(59,130,246,.6)'),
+       borderRadius:4,yAxisID:'y'},
+      {label:'# Games',data:binData.map(d=>d.count),type:'line',borderColor:'rgba(249,115,22,.6)',backgroundColor:'transparent',borderWidth:1.5,pointRadius:3,tension:.3,yAxisID:'y2'},
+    ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},
+      plugins:{legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:9},boxWidth:10,padding:10}}},
+      scales:{
+        x:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8}},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}},
+        y:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:5},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
+          title:{display:true,text:'Avg Brier',color:'#475569',font:{family:'JetBrains Mono',size:8}}},
+        y2:{position:'right',ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:5},grid:{display:false},
+          title:{display:true,text:'# Games',color:'#475569',font:{family:'JetBrains Mono',size:8}}}
+      }}});
+}
+
+setInterval(()=>{if(Object.keys(aPredictions).length>0)runAnalysis();},120000);
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js" onload="load()" onerror="console.warn('Chart.js blocked')"></script>
 </body>
