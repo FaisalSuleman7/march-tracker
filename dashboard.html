@@ -386,11 +386,33 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
     <div id="status-bar"></div>
 
     <div class="stats" id="a-stats-row" style="display:none;">
-      <div class="card pu"><div class="clabel">Your Real Brier</div><div class="cval pu" id="a-brier" style="font-size:32px;padding-top:6px;">—</div><div class="csub" id="a-brier-sub">before Kaggle updates</div></div>
-      <div class="card gr"><div class="clabel">Games Matched</div><div class="cval gr" id="a-games">—</div><div class="csub" id="a-games-sub">of 134 total</div></div>
+      <div class="card pu"><div class="clabel">Your Real Brier</div><div class="cval pu" id="a-brier" style="font-size:32px;padding-top:6px;">—</div><div class="csub" id="a-brier-sub">at — games scored</div></div>
+      <div class="card gr"><div class="clabel">Kaggle Score</div><div class="cval gr" id="a-kaggle-brier" style="font-size:32px;padding-top:6px;">—</div><div class="csub" id="a-kaggle-sub">at — games (official)</div></div>
       <div class="card or"><div class="clabel">Correct Direction</div><div class="cval or" id="a-correct">—</div><div class="csub" id="a-correct-sub">predicted winner right</div></div>
       <div class="card re"><div class="clabel">Upsets Caught</div><div class="cval re" id="a-upsets">—</div><div class="csub">underdog wins predicted</div></div>
-      <div class="card bl"><div class="clabel">vs Kaggle Score</div><div class="cval bl" id="a-gap" style="font-size:28px;padding-top:8px;">—</div><div class="csub" id="a-gap-sub">Kaggle: 0.19538</div></div>
+      <div class="card bl"><div class="clabel">Difference</div><div class="cval bl" id="a-gap" style="font-size:28px;padding-top:8px;">—</div><div class="csub" id="a-gap-sub">your calc vs Kaggle</div></div>
+    </div>
+
+    <!-- Score comparison log -->
+    <div class="panel" id="a-log-panel" style="display:none;margin-bottom:14px;">
+      <div class="ph">
+        <span class="pt" style="color:var(--purple);">📋 Score History Log</span>
+        <span class="ps">your self-calculated score vs Kaggle official · logged each refresh</span>
+      </div>
+      <div style="max-height:220px;overflow-y:auto;" id="a-log-table">
+        <table>
+          <thead><tr>
+            <th>Time (Munich)</th>
+            <th style="text-align:center;">Your Games</th>
+            <th>Your Brier</th>
+            <th style="text-align:center;">Kaggle @ same count</th>
+            <th>Kaggle Brier</th>
+            <th>Diff</th>
+            <th>Note</th>
+          </tr></thead>
+          <tbody id="a-log-tbody"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="grid2" id="a-charts-row" style="display:none;">
@@ -422,7 +444,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
       </div>
       <div style="max-height:500px;overflow-y:auto;">
         <table>
-          <thead><tr><th>♂♀</th><th>Teams</th><th>Result</th><th>Your Pred</th><th>Brier</th><th>Assessment</th></tr></thead>
+          <thead><tr><th>✓✗</th><th>♂♀</th><th>Score (winner in green)</th><th>Your Pick vs Actual</th><th>Brier</th><th>Assessment</th></tr></thead>
           <tbody id="a-games-tbody"></tbody>
         </table>
       </div>
@@ -1222,6 +1244,7 @@ async function load(){
 
   if(!h||!h.snapshots||!h.snapshots.length){document.getElementById('warn').style.display='block';return;}
   document.getElementById('warn').style.display='none';
+  window._lastHistory = h; // expose for prediction analyzer
 
   const snaps=sortedSnaps(h);
   const last=snaps[snaps.length-1];
@@ -1616,31 +1639,103 @@ async function runAnalysis(){
   renderAnalysis();
 }
 
+// Score history log — persists in memory during session
+let aScoreLog = [];
+
 function renderAnalysis(){
   const R=aResults;if(!R.length)return;
   const totalBrier=R.reduce((s,g)=>s+g.brier,0)/R.length;
   const correct=R.filter(g=>g.predictedCorrectly).length;
   const upsets=R.filter(g=>g.isUpset).length;
-  const kaggleBrier=0.19538;
 
-  ['a-stats-row','a-charts-row','a-split-row','a-games-panel'].forEach(id=>{
+  // Get current Kaggle score from main dashboard data
+  const kaggleSnaps = window._lastHistory ? window._lastHistory.snapshots : [];
+  const lastSnap = kaggleSnaps.length ? kaggleSnaps[kaggleSnaps.length-1] : null;
+  const kaggleBrier = lastSnap ? lastSnap.score : 0.19538;
+  const kaggleGames = lastSnap ? (lastSnap.games_scored*2||48) : 48;
+  const myGames = R.length;
+
+  ['a-stats-row','a-charts-row','a-split-row','a-games-panel','a-log-panel'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el)el.style.display=id==='a-stats-row'?'grid':'block';
+    if(el)el.style.display=(id==='a-stats-row')?'grid':'block';
   });
 
   const aSet=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
   const aSetH=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
 
-  aSet('a-brier',fmt(totalBrier,5));
-  aSet('a-brier-sub',`Kaggle shows: ${fmt(kaggleBrier,5)}`);
-  aSet('a-games',R.length);
-  aSet('a-games-sub',`of 134 total (${Math.round(R.length/134*100)}%)`);
-  aSet('a-correct',Math.round(correct/R.length*100)+'%');
-  aSet('a-correct-sub',`${correct} of ${R.length} games`);
-  aSet('a-upsets',upsets);
-  const diff=totalBrier-kaggleBrier;
-  aSet('a-gap',(diff>0?'+':'')+fmt(diff,5));
-  aSet('a-gap-sub',diff<0?'🎉 better than Kaggle!':'vs your Kaggle score');
+  // Your score card
+  aSet('a-brier', fmt(totalBrier,5));
+  aSet('a-brier-sub', `at ${myGames} games scored`);
+
+  // Kaggle score card
+  aSet('a-kaggle-brier', fmt(kaggleBrier,5));
+  aSet('a-kaggle-sub', `at ${kaggleGames} games (official)`);
+
+  // Correct direction
+  aSet('a-correct', Math.round(correct/R.length*100)+'%');
+  aSet('a-correct-sub', `${correct} of ${R.length} games`);
+  aSet('a-upsets', upsets);
+
+  // Difference card
+  const diff = totalBrier - kaggleBrier;
+  const gameGap = myGames - kaggleGames;
+  aSet('a-gap', (diff>0?'+':'')+fmt(diff,5));
+  aSet('a-gap-sub',
+    myGames===kaggleGames ? `same game count (${myGames})` :
+    myGames>kaggleGames  ? `you: ${myGames} games · Kaggle: ${kaggleGames} (you're ${gameGap} ahead)` :
+                            `you: ${myGames} games · Kaggle: ${kaggleGames}`
+  );
+
+  // Log this snapshot
+  const now = new Date(new Date().getTime()+60*60*1000); // Munich
+  const p = n=>String(n).padStart(2,'0');
+  const timeStr = `${now.getUTCFullYear()}-${p(now.getUTCMonth()+1)}-${p(now.getUTCDate())} ${p(now.getUTCHours())}:${p(now.getUTCMinutes())}`;
+
+  // Only log if game count or score changed
+  const lastLog = aScoreLog[aScoreLog.length-1];
+  const changed = !lastLog || lastLog.myGames!==myGames || lastLog.myBrier!==totalBrier;
+  if(changed){
+    aScoreLog.push({
+      time: timeStr,
+      myGames, myBrier: totalBrier,
+      kaggleGames, kaggleBrier,
+      // kaggleAtMyGames will be filled in when Kaggle reaches the same count
+      kaggleAtMyGames: (kaggleGames===myGames) ? kaggleBrier : null,
+      diff: (kaggleGames===myGames) ? diff : null,
+      note: myGames>kaggleGames
+        ? `⚡ you're ${gameGap} games ahead — waiting for Kaggle to catch up`
+        : myGames===kaggleGames
+        ? `✅ same count · diff = ${(diff>0?'+':'')+fmt(diff,5)}`
+        : `⏳ Kaggle has more games scored`
+    });
+    // Also try to fill in kaggleAtMyGames for any older log entry
+    // whose game count now matches Kaggle's current count
+    for(const entry of aScoreLog){
+      if(entry.kaggleAtMyGames===null && entry.myGames===kaggleGames){
+        entry.kaggleAtMyGames = kaggleBrier;
+        entry.diff = entry.myBrier - kaggleBrier;
+        entry.note = `✅ Kaggle reached ${kaggleGames} games · diff = ${(entry.diff>0?'+':'')+fmt(entry.diff,5)}`;
+      }
+    }
+  }
+
+  // Render log table — newest first
+  const tbody = document.getElementById('a-log-tbody');
+  if(tbody){
+    tbody.innerHTML = [...aScoreLog].reverse().map(l=>{
+      const matched = l.kaggleAtMyGames !== null;
+      const dColor = !matched?'var(--muted)':l.diff<0?'var(--green)':l.diff>0?'var(--red)':'var(--muted)';
+      return`<tr style="${matched?'background:rgba(34,197,94,.03)':''}">
+        <td style="color:var(--muted);font-size:10px;">${l.time}</td>
+        <td style="color:var(--purple);text-align:center;font-weight:500;">${l.myGames}</td>
+        <td style="color:var(--purple);">${fmt(l.myBrier,5)}</td>
+        <td style="color:${matched?'var(--green)':'var(--muted)'};text-align:center;">${matched?l.myGames:'—'}</td>
+        <td style="color:${matched?'var(--green)':'var(--muted)'};">${matched?fmt(l.kaggleAtMyGames,5):'waiting...'}</td>
+        <td style="color:${dColor};font-weight:${matched?'500':'400'};">${matched?(l.diff>0?'+':'')+fmt(l.diff,5):'—'}</td>
+        <td style="color:var(--muted);font-size:10px;">${l.note}</td>
+      </tr>`;
+    }).join('');
+  }
 
   const renderSplit=(games,elId,subId)=>{
     if(!games.length){aSetH(elId,'<div class="empty">No scored games yet</div>');return;}
@@ -1652,28 +1747,40 @@ function renderAnalysis(){
       <div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px;">ACCURACY</div><div style="font-family:var(--display);font-size:30px;color:var(--green);">${Math.round(c/games.length*100)}%</div></div>
       <div><div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:3px;">GAMES</div><div style="font-family:var(--display);font-size:30px;color:var(--orange);">${games.length}</div></div>
     </div>
-    ${games.slice(0,4).map(g=>`<div style="padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;display:flex;justify-content:space-between;">
-      <span style="color:${g.loWon?'var(--text)':'var(--muted)'};">${g.loName} ${g.loScore}</span>
-      <span style="color:var(--muted);">vs</span>
-      <span style="color:${!g.loWon?'var(--text)':'var(--muted)'};">${g.hiScore} ${g.hiName}</span>
+    ${games.slice(0,4).map(g=>`<div style="padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:10px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:${g.predictedCorrectly?'var(--green)':'var(--red)'};font-size:9px;">${g.predictedCorrectly?'✓':'✗'}</span>
+      <span style="color:var(--muted);">${g.loName} vs ${g.hiName}</span>
+      <span style="color:var(--text);">→ ${g.loWon?g.loName:g.hiName} won</span>
       <span style="color:${g.predictedCorrectly?'var(--green)':'var(--red)'};">${fmt(g.brier,5)}</span>
     </div>`).join('')}`);
   };
   renderSplit(R.filter(g=>g.gender==='♂'),'a-mens-panel','a-mens-sub');
   renderSplit(R.filter(g=>g.gender==='♀'),'a-womens-panel','a-womens-sub');
 
-  aSet('a-games-table-sub',`${R.length} games · worst Brier first`);
+  // Game table — clearly show predicted vs actual
+  aSet('a-games-table-sub',`${R.length} games · ✓ correct · ✗ wrong · sorted worst Brier first`);
   document.getElementById('a-games-tbody').innerHTML=[...R].sort((a,b)=>b.brier-a.brier).map(g=>{
-    const asmt=g.isUpset?'<span class="badge upset">🔥 upset</span>'
-              :g.brier<0.05?'<span class="badge up">excellent</span>'
-              :g.brier<0.15?'<span class="badge nc">good</span>'
-              :g.brier<0.25?'<span class="badge nc">ok</span>'
-              :'<span class="badge dn">miss</span>';
-    return`<tr class="${g.predictedCorrectly?'correct':'wrong'}">
+    const predictedWinner = g.pred>=0.5 ? g.loName : g.hiName;
+    const actualWinner    = g.loWon      ? g.loName : g.hiName;
+    const correct         = g.predictedCorrectly;
+    const asmt = g.isUpset?'<span class="badge upset">🔥 upset</span>'
+               : g.brier<0.05?'<span class="badge up">excellent</span>'
+               : g.brier<0.15?'<span class="badge nc">good</span>'
+               : g.brier<0.25?'<span class="badge nc">ok</span>'
+               :'<span class="badge dn">miss</span>';
+    // Score display — winner in bold green, loser muted
+    const scoreStr = g.loWon
+      ? `<b style="color:var(--green)">${g.loName} ${g.loScore}</b> – ${g.hiScore} ${g.hiName}`
+      : `${g.loName} ${g.loScore} – <b style="color:var(--green)">${g.hiScore} ${g.hiName}</b>`;
+
+    return`<tr class="${correct?'correct':'wrong'}">
+      <td style="font-size:14px;text-align:center;">${correct?'✅':'❌'}</td>
       <td>${g.gender}</td>
-      <td style="font-size:10px;">${g.loName} vs ${g.hiName}</td>
-      <td style="font-size:10px;">${g.loWon?`<b>${g.loName}</b> ${g.loScore}–${g.hiScore} ${g.hiName}`:`${g.loName} ${g.loScore}–${g.hiScore} <b>${g.hiName}</b>`}</td>
-      <td style="color:var(--blue);font-size:10px;">${fmt(g.pred,3)} → ${g.loName}</td>
+      <td style="font-size:10px;">${scoreStr}</td>
+      <td style="font-size:10px;">
+        <div style="color:var(--blue);">📌 You picked: <b>${predictedWinner}</b> (${fmt(g.pred,3)})</div>
+        <div style="color:${correct?'var(--green)':'var(--red)'};margin-top:2px;">${correct?'✓ Correct!':'✗ Actually: <b>'+actualWinner+'</b> won'}</div>
+      </td>
       <td style="color:${g.brier<0.1?'var(--green)':g.brier>0.3?'var(--red)':'var(--text)'};">${fmt(g.brier,5)}</td>
       <td>${asmt}</td>
     </tr>`;
