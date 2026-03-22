@@ -562,12 +562,20 @@ async function renderGamesScored(snaps){
   // Kaggle games: use last snapshot's games_scored
   const lastSnap = snaps && snaps.length ? snaps[snaps.length-1] : null;
   const rawGames = lastSnap && lastSnap.games_scored != null ? lastSnap.games_scored : null;
-  // Old snapshots stored men-only estimate (24); new ones store real total (62+)
-  const kaggleScored = rawGames != null
-    ? (rawGames <= 67 ? rawGames * 2 : rawGames)
-    : estimateGamesFromDate() * 2;
+
+  // games_scored field meaning by era:
+  // - Old snapshots (before tracker fix): stored 24 = men-only round estimate → multiply by 2
+  // - New snapshots (after tracker fix): stored real total from Kaggle API (e.g. 62)
+  // - Schedule fallback in tracker.py: already returns total (e.g. 32 for Mar 19-22)
+  // Heuristic: if rawGames is exactly a schedule-estimate value (8,16,24,32,40,48,56,64,72...)
+  // AND it's <= 67, it might be men-only. But the schedule fallback also returns these values.
+  // Safest: use ESPN completed count as ground truth when available, Kaggle as label only.
+
   const espnDone = live.completed > 0 ? live.completed : null;
-  const games = kaggleScored;
+  // Use ESPN as the "real" games count for display progress — it's always accurate
+  // Use rawGames as Kaggle's official scored count (what affects your rank)
+  const kaggleDisplay = rawGames != null ? rawGames : estimateGamesFromDate();
+  const games = kaggleDisplay;
   const pct = Math.round((games / 134) * 100);
 
   set('games-count', games);
