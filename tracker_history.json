@@ -8,7 +8,7 @@
     {
       "file": "submission_kaggle7.csv",
       "description": "",
-      "score": 0.18266,
+      "score": 0.17243,
       "status": "complete",
       "date": "2026-03-16 11:41",
       "selected": false,
@@ -3967,10 +3967,70 @@
           "score": 0.07907
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-22T11:15:28.856824+00:00",
+      "timestamp_readable": "2026-03-22 11:15 UTC",
+      "timestamp_local": "2026-03-22 12:15",
+      "rank": 2664,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 23.56,
+      "score": 0.17243,
+      "rank_change": -202,
+      "score_change": -0.01023,
+      "top_score": 0.07706,
+      "top_team": "Panos",
+      "gap_to_top": 0.09537,
+      "games_scored": 72,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "Panos",
+          "score": 0.07706
+        },
+        {
+          "rank": 2,
+          "name": "harry",
+          "score": 0.07938
+        },
+        {
+          "rank": 3,
+          "name": "Brendan Carlin",
+          "score": 0.08033
+        },
+        {
+          "rank": 4,
+          "name": "KiroSamurai",
+          "score": 0.08179
+        },
+        {
+          "rank": 5,
+          "name": "Qinghchen",
+          "score": 0.08181
+        },
+        {
+          "rank": 6,
+          "name": "Marcus Harvey",
+          "score": 0.08249
+        },
+        {
+          "rank": 7,
+          "name": "yhbas65633",
+          "score": 0.08275
+        },
+        {
+          "rank": 8,
+          "name": "Jimmy Joseph Bracket",
+          "score": 0.08294
+        }
+      ]
     }
   ],
-  "best_rank": 2866,
-  "best_score": 0.18266,
+  "best_rank": 2664,
+  "best_score": 0.17243,
   "submission_scores_history": [
     {
       "timestamp": "2026-03-21T10:22:52.000000+00:00",
@@ -4013,11 +4073,11 @@
       "date": "2026-03-22",
       "start_rank": 3026,
       "start_score": 0.19538,
-      "best_rank": 2866,
+      "best_rank": 2664,
       "worst_rank": 3026,
-      "end_rank": 2866,
-      "end_score": 0.18266,
-      "checks": 25,
+      "end_rank": 2664,
+      "end_score": 0.17243,
+      "checks": 26,
       "games_scored": 72
     }
   }
