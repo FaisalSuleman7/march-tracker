@@ -559,38 +559,29 @@ async function renderGamesScored(snaps){
     live = parseESPN(espnData);
   }catch(e){ console.warn('ESPN fetch failed:', e); }
 
-  // Kaggle games: use last snapshot's games_scored
-  const lastSnap = snaps && snaps.length ? snaps[snaps.length-1] : null;
-  const rawGames = lastSnap && lastSnap.games_scored != null ? lastSnap.games_scored : null;
-
-  // games_scored field meaning by era:
-  // - Old snapshots (before tracker fix): stored 24 = men-only round estimate → multiply by 2
-  // - New snapshots (after tracker fix): stored real total from Kaggle API (e.g. 62)
-  // - Schedule fallback in tracker.py: already returns total (e.g. 32 for Mar 19-22)
-  // Heuristic: if rawGames is exactly a schedule-estimate value (8,16,24,32,40,48,56,64,72...)
-  // AND it's <= 67, it might be men-only. But the schedule fallback also returns these values.
-  // Safest: use ESPN completed count as ground truth when available, Kaggle as label only.
-
+  // ESPN is the ground truth — Kaggle scores these same games with a few hours lag
   const espnDone = live.completed > 0 ? live.completed : null;
-  // Use ESPN as the "real" games count for display progress — it's always accurate
-  // Use rawGames as Kaggle's official scored count (what affects your rank)
-  const kaggleDisplay = rawGames != null ? rawGames : estimateGamesFromDate();
-  const games = kaggleDisplay;
+  const lastSnap = snaps && snaps.length ? snaps[snaps.length-1] : null;
+
+  // Use ESPN finished count as the primary display (most accurate)
+  // games_scored in snapshot is an unreliable estimate — ignore it
+  const games = espnDone || estimateGamesFromDate();
   const pct = Math.round((games / 134) * 100);
 
   set('games-count', games);
   document.getElementById('games-bar').style.width = pct+'%';
 
-  // Build the subtitle — show exact Kaggle men/women split if available
-  const menW  = lastSnap && lastSnap.games_scored_men   != null ? lastSnap.games_scored_men   : null;
-  const womenW= lastSnap && lastSnap.games_scored_women != null ? lastSnap.games_scored_women  : null;
-  const kaggleSub = menW!=null && womenW!=null
-    ? `Kaggle scored: ${games}/134 (${menW}M + ${womenW}W)`
-    : `Kaggle scored: ${games}/134`;
-  const espnStr = espnDone!=null
+  // Show ESPN as primary (accurate) and snapshot Kaggle count if API succeeded
+  const snapGames = lastSnap && lastSnap.games_scored != null ? lastSnap.games_scored : null;
+  const menW   = lastSnap && lastSnap.games_scored_men   != null ? lastSnap.games_scored_men   : null;
+  const womenW = lastSnap && lastSnap.games_scored_women != null ? lastSnap.games_scored_women : null;
+  const kagglePart = (menW!=null && womenW!=null)
+    ? `Kaggle scored: ${snapGames}/134 (${menW}M+${womenW}W)`
+    : `ESPN finished: ${games}/134`;
+  const espnPart = (espnDone!=null && menW!=null)
     ? ` · ESPN finished: ${espnDone} (♂${live.menCompleted} ♀${live.womenCompleted})`
-    : '';
-  set('games-sub', kaggleSub + espnStr);
+    : (espnDone!=null ? ` · ESPN: ♂${live.menCompleted} ♀${live.womenCompleted}` : '');
+  set('games-sub', kagglePart + espnPart);
 
   const stability = games===0   ? 'No games scored yet — leaderboard will be volatile'
                   : games<32    ? 'Play-in + early rounds — leaderboard very volatile'
