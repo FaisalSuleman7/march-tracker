@@ -302,7 +302,9 @@ def fetch_kaggle_games_scored(username, key):
                     return total, men, women
             except Exception:
                 pass
-            print(f"   ⚠️  view API returned 200 but no games count found. Preview: {raw[:300]}")
+            idx = raw.lower().find('through')
+            ctx = raw[max(0,idx-20):idx+120] if idx>=0 else raw[:400]
+            print(f"   ⚠️  view API 200 but no games count. Context: {ctx}")
         else:
             print(f"   ⚠️  view API returned HTTP {resp.status_code}")
     except Exception as e:
@@ -320,7 +322,28 @@ def fetch_kaggle_games_scored(username, key):
     except Exception as e:
         print(f"   ⚠️  competitions API error: {e}")
 
-    # --- Fallback: cumulative schedule estimate ---
+    # --- Attempt 3: scrape the actual competition HTML page ---
+    try:
+        page_url = f'https://www.kaggle.com/competitions/{COMPETITION}/leaderboard'
+        page_resp = requests.get(
+            page_url,
+            headers={
+                'Authorization': f'Bearer {key}',
+                'User-Agent': 'Mozilla/5.0'
+            },
+            timeout=20
+        )
+        if page_resp.status_code == 200:
+            total, men, women = parse_games_text(page_resp.text)
+            if total:
+                print(f"   OK Kaggle official [HTML page]: {total} games ({men} NCAAM + {women} NCAAW)")
+                return total, men, women
+            # Print snippet around "games" keyword for debugging
+            idx = page_resp.text.lower().find('current through')
+            if idx >= 0:
+                print(f"   Found 'current through' but regex failed. Context: {page_resp.text[idx:idx+100]}")
+    except Exception as e:
+        print(f"   ⚠️  HTML page scrape error: {e}")
     from datetime import date
     today = date.today()
     schedule = [
