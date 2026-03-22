@@ -581,11 +581,16 @@ async function renderGamesScored(snaps){
   set('games-count', games);
   document.getElementById('games-bar').style.width = pct+'%';
 
-  // Show both counts clearly
+  // Build the subtitle — show exact Kaggle men/women split if available
+  const menW  = lastSnap && lastSnap.games_scored_men   != null ? lastSnap.games_scored_men   : null;
+  const womenW= lastSnap && lastSnap.games_scored_women != null ? lastSnap.games_scored_women  : null;
+  const kaggleSub = menW!=null && womenW!=null
+    ? `Kaggle scored: ${games}/134 (${menW}M + ${womenW}W)`
+    : `Kaggle scored: ${games}/134`;
   const espnStr = espnDone!=null
     ? ` · ESPN finished: ${espnDone} (♂${live.menCompleted} ♀${live.womenCompleted})`
     : '';
-  set('games-sub', `Kaggle scored: ${games}/134${espnStr}`);
+  set('games-sub', kaggleSub + espnStr);
 
   const stability = games===0   ? 'No games scored yet — leaderboard will be volatile'
                   : games<32    ? 'Play-in + early rounds — leaderboard very volatile'
