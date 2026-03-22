@@ -4927,6 +4927,66 @@
           "score": 0.08427
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-22T19:45:21.659280+00:00",
+      "timestamp_readable": "2026-03-22 19:45 UTC",
+      "timestamp_local": "2026-03-22 20:45",
+      "rank": 2661,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 23.64,
+      "score": 0.17243,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.07938,
+      "top_team": "harry",
+      "gap_to_top": 0.09305,
+      "games_scored": 72,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.07938
+        },
+        {
+          "rank": 2,
+          "name": "KiroSamurai",
+          "score": 0.08179
+        },
+        {
+          "rank": 3,
+          "name": "Qinghchen",
+          "score": 0.08181
+        },
+        {
+          "rank": 4,
+          "name": "Marcus Harvey",
+          "score": 0.08249
+        },
+        {
+          "rank": 5,
+          "name": "Jimmy Joseph Bracket",
+          "score": 0.08294
+        },
+        {
+          "rank": 6,
+          "name": "Fritz Cremer",
+          "score": 0.08374
+        },
+        {
+          "rank": 7,
+          "name": "Pilkwang Kim",
+          "score": 0.08421
+        },
+        {
+          "rank": 8,
+          "name": "Harpole Stlouis",
+          "score": 0.08427
+        }
+      ]
     }
   ],
   "best_rank": 2661,
@@ -4977,7 +5037,7 @@
       "worst_rank": 3026,
       "end_rank": 2661,
       "end_score": 0.17243,
-      "checks": 41,
+      "checks": 42,
       "games_scored": 72
     }
   }
