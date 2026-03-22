@@ -256,71 +256,120 @@ def save_history(history, submissions=None):
 
 def fetch_kaggle_games_scored(username, key):
     """
-    Fetch Kaggle's official games scored count from the leaderboard page.
-    Kaggle shows: 'The Leaderboard is current through N games (X NCAAM & Y NCAAW)'
-    Returns total games scored (men + women), or None if can't fetch.
+    Fetch Kaggle's official games scored count.
+    Tries multiple sources to find:
+    'The Leaderboard is current through 62 games (35 NCAAM & 27 NCAAW)'
+    Returns (total, men, women) tuple or (estimate, None, None) fallback.
     """
     import re
-    url = f'https://www.kaggle.com/api/v1/competitions/{COMPETITION}/leaderboard/view'
-    try:
-        resp = requests.get(
-            url,
-            headers={'Authorization': f'Bearer {key}'},
-            timeout=15
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            desc = str(data)
-            # Try multiple patterns to match Kaggle's leaderboard text
-            patterns = [
-                r'through\s+(\d+)\s+games?\s*\((\d+)\s+NCAAM\D+(\d+)\s+NCAAW\)',
-                r'current through (\d+) games',
-                r'(\d+)\s+games?\s*\((\d+)\s+NCAAM',
-            ]
-            for pat in patterns:
-                match = re.search(pat, desc, re.IGNORECASE)
-                if match:
-                    total = int(match.group(1))
-                    men   = int(match.group(2)) if len(match.groups()) >= 2 else '?'
-                    women = int(match.group(3)) if len(match.groups()) >= 3 else '?'
-                    print(f"   📊 Kaggle official: {total} games ({men} NCAAM + {women} NCAAW)")
-                    return total
-            print(f"   ⚠️  Could not parse games count from Kaggle response")
-    except Exception as e:
-        print(f"   ⚠️  fetch_kaggle_games_scored error: {e}")
 
-    # Fallback: estimate from schedule (returns total men+women)
+    def parse_games_text(text):
+        """Extract games count from any text containing the Kaggle leaderboard string."""
+        # Primary pattern: "current through 62 games (35 NCAAM & 27 NCAAW)"
+        patterns = [
+            r'current\s+through\s+(\d+)\s+games?\s*\((\d+)\s+NCAAM\D{1,5}(\d+)\s+NCAAW\)',
+            r'through\s+(\d+)\s+games?\s*\((\d+)\s+NCAAM\D{1,5}(\d+)\s+NCAAW\)',
+            r'(\d+)\s+games?\s*\((\d+)\s+NCAAM\D{1,5}(\d+)\s+NCAAW\)',
+            r'current\s+through\s+(\d+)\s+games?',
+        ]
+        for pat in patterns:
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                total = int(m.group(1))
+                men   = int(m.group(2)) if len(m.groups()) >= 2 else None
+                women = int(m.group(3)) if len(m.groups()) >= 3 else None
+                return total, men, women
+        return None, None, None
+
+    # --- Attempt 1: leaderboard/view API endpoint ---
+    try:
+        url = f'https://www.kaggle.com/api/v1/competitions/{COMPETITION}/leaderboard/view'
+        resp = requests.get(url, headers={'Authorization': f'Bearer {key}'}, timeout=15)
+        if resp.status_code == 200:
+            # Search raw response text — more reliable than parsing JSON first
+            raw = resp.text
+            total, men, women = parse_games_text(raw)
+            if total:
+                print(f"   📊 Kaggle official [view API]: {total} games ({men} NCAAM + {women} NCAAW)")
+                return total
+            # Also try parsed JSON — walk all string values
+            try:
+                data = resp.json()
+                full_str = str(data)
+                total, men, women = parse_games_text(full_str)
+                if total:
+                    print(f"   📊 Kaggle official [view JSON]: {total} games ({men} NCAAM + {women} NCAAW)")
+                    return total
+            except Exception:
+                pass
+            print(f"   ⚠️  view API returned 200 but no games count found. Preview: {raw[:300]}")
+        else:
+            print(f"   ⚠️  view API returned HTTP {resp.status_code}")
+    except Exception as e:
+        print(f"   ⚠️  view API error: {e}")
+
+    # --- Attempt 2: competitions API for subtitle/description ---
+    try:
+        url2 = f'https://www.kaggle.com/api/v1/competitions/{COMPETITION}'
+        resp2 = requests.get(url2, headers={'Authorization': f'Bearer {key}'}, timeout=15)
+        if resp2.status_code == 200:
+            total, men, women = parse_games_text(resp2.text)
+            if total:
+                print(f"   📊 Kaggle official [competitions API]: {total} games ({men} NCAAM + {women} NCAAW)")
+                return total
+    except Exception as e:
+        print(f"   ⚠️  competitions API error: {e}")
+
+    # --- Fallback: cumulative schedule estimate ---
     from datetime import date
     today = date.today()
     schedule = [
-        (date(2026, 3, 19), 8),   # Play-in (4 men + 4 women)
-        (date(2026, 3, 20), 8),   # R1 day 1
-        (date(2026, 3, 21), 8),   # R1 day 2
-        (date(2026, 3, 22), 8),   # R2 day 1
-        (date(2026, 3, 23), 8),   # R2 day 2
-        (date(2026, 3, 27), 8),   # S16 day 1
-        (date(2026, 3, 28), 8),   # S16 day 2
-        (date(2026, 3, 29), 4),   # E8 day 1
-        (date(2026, 3, 30), 4),   # E8 day 2
-        (date(2026, 4,  5), 4),   # F4
-        (date(2026, 4,  6), 2),   # Championship
+        (date(2026, 3, 19),  8),
+        (date(2026, 3, 20), 24),
+        (date(2026, 3, 21), 48),
+        (date(2026, 3, 22), 72),
+        (date(2026, 3, 23), 96),
+        (date(2026, 3, 27), 104),
+        (date(2026, 3, 28), 112),
+        (date(2026, 3, 29), 116),
+        (date(2026, 3, 30), 120),
+        (date(2026, 4,  5), 124),
+        (date(2026, 4,  6), 134),
     ]
-    games = sum(g for d, g in schedule if d <= today)
-    print(f"   📊 Estimated games scored: {min(games, 134)}")
+    games = 0
+    for d, cum in schedule:
+        if today >= d:
+            games = cum
+        else:
+            break
+    print(f"   📊 Estimated games scored (schedule fallback): {games}")
     return min(games, 134)
 
 
 def estimate_games_scored(prev_score, curr_score, prev_snap=None):
-    """Legacy -- kept for compatibility. Use fetch_kaggle_games_scored instead."""
+    """Legacy fallback -- cumulative games by date."""
     from datetime import date
     today = date.today()
     schedule = [
-        (date(2026, 3, 19), 8),(date(2026, 3, 20), 8),(date(2026, 3, 21), 8),
-        (date(2026, 3, 22), 8),(date(2026, 3, 23), 8),(date(2026, 3, 27), 8),
-        (date(2026, 3, 28), 8),(date(2026, 3, 29), 4),(date(2026, 3, 30), 4),
-        (date(2026, 4,  5), 4),(date(2026, 4,  6), 2),
+        (date(2026, 3, 19),  8),
+        (date(2026, 3, 20), 24),
+        (date(2026, 3, 21), 48),
+        (date(2026, 3, 22), 72),
+        (date(2026, 3, 23), 96),
+        (date(2026, 3, 27), 104),
+        (date(2026, 3, 28), 112),
+        (date(2026, 3, 29), 116),
+        (date(2026, 3, 30), 120),
+        (date(2026, 4,  5), 124),
+        (date(2026, 4,  6), 134),
     ]
-    return min(sum(g for d, g in schedule if d <= today), 134)
+    games = 0
+    for d, cum in schedule:
+        if today >= d:
+            games = cum
+        else:
+            break
+    return min(games, 134)
 
 
 def record_snapshot(history, rank, score, total, top_score, top_name,
