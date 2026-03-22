@@ -286,20 +286,20 @@ def fetch_kaggle_games_scored(username, key):
         url = f'https://www.kaggle.com/api/v1/competitions/{COMPETITION}/leaderboard/view'
         resp = requests.get(url, headers={'Authorization': f'Bearer {key}'}, timeout=15)
         if resp.status_code == 200:
-            # Search raw response text — more reliable than parsing JSON first
+            # Search raw response text -- more reliable than parsing JSON first
             raw = resp.text
             total, men, women = parse_games_text(raw)
             if total:
                 print(f"   📊 Kaggle official [view API]: {total} games ({men} NCAAM + {women} NCAAW)")
-                return total
-            # Also try parsed JSON — walk all string values
+                return total, men, women
+            # Also try parsed JSON -- walk all string values
             try:
                 data = resp.json()
                 full_str = str(data)
                 total, men, women = parse_games_text(full_str)
                 if total:
                     print(f"   📊 Kaggle official [view JSON]: {total} games ({men} NCAAM + {women} NCAAW)")
-                    return total
+                    return total, men, women
             except Exception:
                 pass
             print(f"   ⚠️  view API returned 200 but no games count found. Preview: {raw[:300]}")
@@ -316,7 +316,7 @@ def fetch_kaggle_games_scored(username, key):
             total, men, women = parse_games_text(resp2.text)
             if total:
                 print(f"   📊 Kaggle official [competitions API]: {total} games ({men} NCAAM + {women} NCAAW)")
-                return total
+                return total, men, women
     except Exception as e:
         print(f"   ⚠️  competitions API error: {e}")
 
@@ -343,7 +343,7 @@ def fetch_kaggle_games_scored(username, key):
         else:
             break
     print(f"   📊 Estimated games scored (schedule fallback): {games}")
-    return min(games, 134)
+    return min(games, 134), None, None
 
 
 def estimate_games_scored(prev_score, curr_score, prev_snap=None):
@@ -373,7 +373,8 @@ def estimate_games_scored(prev_score, curr_score, prev_snap=None):
 
 
 def record_snapshot(history, rank, score, total, top_score, top_name,
-                    entries_count, top8=None, kaggle_games=None):
+                    entries_count, top8=None, kaggle_games=None,
+                    kaggle_men=None, kaggle_women=None):
     from datetime import timedelta, date
     now       = datetime.now(timezone.utc)
     munich    = now + timedelta(hours=1)
@@ -401,6 +402,8 @@ def record_snapshot(history, rank, score, total, top_score, top_name,
         'top_team'          : top_name,
         'gap_to_top'        : gap_to_top,
         'games_scored'      : games_scored,
+        'games_scored_men'  : kaggle_men,
+        'games_scored_women': kaggle_women,
         'top8'              : top8 or [],
     }
     history['snapshots'].append(snap)
@@ -552,11 +555,12 @@ def run_check(verbose=True):
     # Fetch Kaggle's official games scored count
     if verbose:
         print(f"🎮 Fetching official games count from Kaggle...")
-    kaggle_games = fetch_kaggle_games_scored(username, key)
+    kaggle_games, kaggle_men, kaggle_women = fetch_kaggle_games_scored(username, key)
 
     history = load_history()
     snap    = record_snapshot(history, rank, score, total,
-                              top_score, top_name, len(scored), top8, kaggle_games)
+                              top_score, top_name, len(scored), top8,
+                              kaggle_games, kaggle_men, kaggle_women)
     save_history(history, submissions if submissions else history.get('submissions'))
 
     if verbose:
