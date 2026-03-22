@@ -552,21 +552,23 @@ function parseESPN(data){
 
 // ── Games Scored ──────────────────────────────────────────────────
 async function renderGamesScored(snaps){
-  // Try live ESPN data first
-  const espnData = await fetchLiveGames();
-  const live     = parseESPN(espnData);
+  // Try live ESPN data first — wrap in try/catch so failure doesn't crash page
+  let live = {completed:0,inProgress:[],scheduled:[],games:[],menCompleted:0,womenCompleted:0};
+  try{
+    const espnData = await fetchLiveGames();
+    live = parseESPN(espnData);
+  }catch(e){ console.warn('ESPN fetch failed:', e); }
 
-  // Kaggle games: stored as total (men+women) in games_scored field
-  // Old snapshots have games_scored as men-only estimate (24 = 12*2) — detect and correct
-  const rawGames = last&&last.games_scored!=null ? last.games_scored : null;
-  // If rawGames <= 67, it's likely the old per-tournament estimate, not total
-  const kaggleScored = rawGames!=null
-    ? (rawGames <= 67 ? rawGames*2 : rawGames)  // old format: multiply; new format: use as-is
-    : estimateGamesFromDate()*2;
+  // Kaggle games: use last snapshot's games_scored
+  const lastSnap = snaps && snaps.length ? snaps[snaps.length-1] : null;
+  const rawGames = lastSnap && lastSnap.games_scored != null ? lastSnap.games_scored : null;
+  // Old snapshots stored men-only estimate (24); new ones store real total (62+)
+  const kaggleScored = rawGames != null
+    ? (rawGames <= 67 ? rawGames * 2 : rawGames)
+    : estimateGamesFromDate() * 2;
   const espnDone = live.completed > 0 ? live.completed : null;
-  // Show Kaggle's official count as primary
-  const games   = kaggleScored;
-  const pct     = Math.round((games/134)*100);
+  const games = kaggleScored;
+  const pct = Math.round((games / 134) * 100);
 
   set('games-count', games);
   document.getElementById('games-bar').style.width = pct+'%';
@@ -1266,22 +1268,24 @@ async function load(){
     set('next-check',nxt>new Date()?nxtStr+' (in '+mins+' min)':nxtStr+' (due now)');
   }catch(e){set('next-check','—');}
 
-  renderStats(h,last,snaps);
-  renderSubs(h,snaps);
-  renderTimeline(snaps);
-  renderRounds(snaps);
-  renderHistogram(h,snaps);
-  await renderGamesScored(snaps);
-  renderTop8(snaps, 'hmfaisal');
-  renderLeaderHistory(snaps);
-  renderDailySummary(h);
+  const safe=(fn,name)=>{try{fn();}catch(e){console.error(name+' failed:',e);}};
+
+  safe(()=>renderStats(h,last,snaps),       'renderStats');
+  safe(()=>renderSubs(h,snaps),             'renderSubs');
+  safe(()=>renderTimeline(snaps),           'renderTimeline');
+  safe(()=>renderRounds(snaps),             'renderRounds');
+  safe(()=>renderHistogram(h,snaps),        'renderHistogram');
+  safe(()=>renderTop8(snaps,'hmfaisal'),    'renderTop8');
+  safe(()=>renderLeaderHistory(snaps),      'renderLeaderHistory');
+  safe(()=>renderDailySummary(h),           'renderDailySummary');
+  try{ await renderGamesScored(snaps); }catch(e){ console.error('renderGamesScored failed:',e); }
 
   if(typeof Chart!=='undefined'){
-    renderRankChart(snaps);
-    renderScoreChart(snaps);
-    renderSubTrends(h,snaps);
-    renderProjection(snaps);
-    renderTop8Chart(snaps);
+    safe(()=>renderRankChart(snaps),        'renderRankChart');
+    safe(()=>renderScoreChart(snaps),       'renderScoreChart');
+    safe(()=>renderSubTrends(h,snaps),      'renderSubTrends');
+    safe(()=>renderProjection(snaps),       'renderProjection');
+    safe(()=>renderTop8Chart(snaps),        'renderTop8Chart');
   }
 }
 
