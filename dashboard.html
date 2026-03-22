@@ -568,12 +568,17 @@ function saveKaggleGames(val){
   if(!isNaN(n) && n >= 0 && n <= 134){
     try{ localStorage.setItem('march_kaggle_games', n); }catch(e){}
     set('kaggle-games-src', '✓ saved');
-    // Re-render games panel immediately
+    // Clear live log entries that used a different Kaggle count
+    aScoreLog = aScoreLog.filter(e=>e._fromHistory || e.kaggleGames===n);
+    // Re-render games panel and analyzer immediately
     const snaps = window._lastSnaps || [];
     if(snaps.length) renderGamesScored(snaps);
+    if(aResults && aResults.length) renderAnalysis();
   } else if(val===''){
     try{ localStorage.removeItem('march_kaggle_games'); }catch(e){}
     set('kaggle-games-src', '← type to override');
+    aScoreLog = aScoreLog.filter(e=>e._fromHistory);
+    if(aResults && aResults.length) renderAnalysis();
   }
 }
 
@@ -1803,7 +1808,20 @@ function renderAnalysis(){
     : [];
   const lastSnap    = kaggleSnaps.length ? kaggleSnaps[kaggleSnaps.length-1] : null;
   const kaggleBrier = lastSnap ? lastSnap.score : 0.19538;
-  const kaggleGames = getKaggleGamesManual() || (lastSnap && lastSnap.games_scored ? lastSnap.games_scored : 48);
+  // Always use manual Kaggle games if set — most accurate
+  const manualKaggle = getKaggleGamesManual();
+  const kaggleGames = manualKaggle !== null
+    ? manualKaggle
+    : (lastSnap && lastSnap.games_scored ? lastSnap.games_scored : 48);
+
+  // If manual value was set and existing live log entries used a different count, clear them
+  // so they get re-logged with the correct Kaggle game count
+  if(manualKaggle !== null){
+    const stale = aScoreLog.filter(e=>!e._fromHistory && e.kaggleGames !== manualKaggle);
+    if(stale.length > 0){
+      aScoreLog = aScoreLog.filter(e=>e._fromHistory); // keep only history entries
+    }
+  }
   const myGames = R.length;
 
   ['a-stats-row','a-charts-row','a-split-row','a-games-panel','a-log-panel'].forEach(id=>{
