@@ -3487,6 +3487,66 @@
           "score": 0.07907
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-22T09:02:43.150756+00:00",
+      "timestamp_readable": "2026-03-22 09:02 UTC",
+      "timestamp_local": "2026-03-22 10:02",
+      "rank": 2866,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 17.76,
+      "score": 0.18266,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.07129,
+      "top_team": "lookahead bias and pray",
+      "gap_to_top": 0.11137,
+      "games_scored": 72,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "lookahead bias and pray",
+          "score": 0.07129
+        },
+        {
+          "rank": 2,
+          "name": "KiroSamurai",
+          "score": 0.07349
+        },
+        {
+          "rank": 3,
+          "name": "dookada",
+          "score": 0.0752
+        },
+        {
+          "rank": 4,
+          "name": "Matthew Sanders",
+          "score": 0.07672
+        },
+        {
+          "rank": 5,
+          "name": "Panos",
+          "score": 0.07706
+        },
+        {
+          "rank": 6,
+          "name": "harry",
+          "score": 0.07711
+        },
+        {
+          "rank": 7,
+          "name": "Nathan Brekke",
+          "score": 0.07889
+        },
+        {
+          "rank": 8,
+          "name": "Marcus Harvey",
+          "score": 0.07907
+        }
+      ]
     }
   ],
   "best_rank": 2866,
@@ -3537,7 +3597,7 @@
       "worst_rank": 3026,
       "end_rank": 2866,
       "end_score": 0.18266,
-      "checks": 17,
+      "checks": 18,
       "games_scored": 72
     }
   }
