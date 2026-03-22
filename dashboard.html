@@ -981,7 +981,7 @@ function renderDailySummary(h){
     const munich = new Date(new Date(s.timestamp).getTime()+60*60*1000);
     const day    = munich.toISOString().slice(0,10);
     const rank   = s.rank;
-    const games  = s.games_scored != null ? s.games_scored*2 : null; // *2 for men+women
+    const games  = s.games_scored != null ? s.games_scored : null;
 
     if(!built[day]){
       built[day]={
@@ -1762,7 +1762,7 @@ function renderAnalysis(){
     : [];
   const lastSnap    = kaggleSnaps.length ? kaggleSnaps[kaggleSnaps.length-1] : null;
   const kaggleBrier = lastSnap ? lastSnap.score : 0.19538;
-  const kaggleGames = lastSnap && lastSnap.games_scored ? lastSnap.games_scored*2 : 48;
+  const kaggleGames = lastSnap && lastSnap.games_scored ? lastSnap.games_scored : 48;
   const myGames = R.length;
 
   ['a-stats-row','a-charts-row','a-split-row','a-games-panel','a-log-panel'].forEach(id=>{
