@@ -270,17 +270,26 @@ def fetch_kaggle_games_scored(username, key):
         )
         if resp.status_code == 200:
             data = resp.json()
-            # Look for games count in leaderboard description
-            desc = str(data.get('description', '') or data.get('subtitle', '') or data)
-            match = re.search(r'through\s+(\d+)\s+games?\s*\((\d+)\s+NCAAM\s*[&amp;and]+\s*(\d+)\s+NCAAW\)', desc, re.IGNORECASE)
-            if match:
-                total = int(match.group(1))
-                print(f"   📊 Kaggle official games scored: {total} ({match.group(2)} NCAAM + {match.group(3)} NCAAW)")
-                return total
+            desc = str(data)
+            # Try multiple patterns to match Kaggle's leaderboard text
+            patterns = [
+                r'through\s+(\d+)\s+games?\s*\((\d+)\s+NCAAM\D+(\d+)\s+NCAAW\)',
+                r'current through (\d+) games',
+                r'(\d+)\s+games?\s*\((\d+)\s+NCAAM',
+            ]
+            for pat in patterns:
+                match = re.search(pat, desc, re.IGNORECASE)
+                if match:
+                    total = int(match.group(1))
+                    men   = int(match.group(2)) if len(match.groups()) >= 2 else '?'
+                    women = int(match.group(3)) if len(match.groups()) >= 3 else '?'
+                    print(f"   📊 Kaggle official: {total} games ({men} NCAAM + {women} NCAAW)")
+                    return total
+            print(f"   ⚠️  Could not parse games count from Kaggle response")
     except Exception as e:
-        pass
+        print(f"   ⚠️  fetch_kaggle_games_scored error: {e}")
 
-    # Fallback: estimate from schedule
+    # Fallback: estimate from schedule (returns total men+women)
     from datetime import date
     today = date.today()
     schedule = [
@@ -297,6 +306,7 @@ def fetch_kaggle_games_scored(username, key):
         (date(2026, 4,  6), 2),   # Championship
     ]
     games = sum(g for d, g in schedule if d <= today)
+    print(f"   📊 Estimated games scored: {min(games, 134)}")
     return min(games, 134)
 
 
