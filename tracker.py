@@ -99,6 +99,15 @@ def fetch_leaderboard(username, key):
         )
         if resp.status_code == 200:
             ct = resp.headers.get('Content-Type', '')
+            # Try to extract game count from response text/headers while we have it
+            import re
+            games_text = str(resp.headers) + (resp.text[:2000] if 'text' in ct else '')
+            m = re.search(r'through\s+(\d+)\s+games?\s*\((\d+)\s+NCAAM\D{1,5}(\d+)\s+NCAAW\)', games_text, re.IGNORECASE)
+            if m:
+                # Store globally for fetch_kaggle_games_scored to pick up
+                global _KAGGLE_GAMES_FROM_DOWNLOAD
+                _KAGGLE_GAMES_FROM_DOWNLOAD = (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                print(f"   OK Games from leaderboard download: {_KAGGLE_GAMES_FROM_DOWNLOAD[0]} ({m.group(2)}M+{m.group(3)}W)")
             if 'zip' in ct or resp.content[:2] == b'PK':
                 return parse_zip(resp.content)
             if 'csv' in ct or 'text' in ct:
@@ -254,14 +263,21 @@ def save_history(history, submissions=None):
         json.dump(history, f, indent=2)
 
 
+_KAGGLE_GAMES_FROM_DOWNLOAD = None  # set by fetch_leaderboard if available
+
+
 def fetch_kaggle_games_scored(username, key):
     """
-    Fetch Kaggle's official games scored count.
-    Tries multiple sources to find:
-    'The Leaderboard is current through 62 games (35 NCAAM & 27 NCAAW)'
-    Returns (total, men, women) tuple or (estimate, None, None) fallback.
+    Get Kaggle's official games scored count.
+    Priority: 1) leaderboard download (already fetched), 2) view API, 3) HTML page, 4) schedule estimate
     """
     import re
+
+    # --- Attempt 0: use value already extracted during fetch_leaderboard ---
+    if _KAGGLE_GAMES_FROM_DOWNLOAD:
+        total, men, women = _KAGGLE_GAMES_FROM_DOWNLOAD
+        print(f"   OK Kaggle games [from download cache]: {total} ({men}M + {women}W)")
+        return total, men, women
 
     def parse_games_text(text):
         """Extract games count from any text containing the Kaggle leaderboard string."""
