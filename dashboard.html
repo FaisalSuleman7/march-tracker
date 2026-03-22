@@ -266,7 +266,7 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
     </div>
 
     <div class="panel">
-      <div class="ph"><span class="pt">🎮 Games Scored</span><span class="ps" id="games-sub">of 63 total tournament games</span></div>
+      <div class="ph"><span class="pt">🎮 Games Scored</span><span class="ps" id="games-sub">of 134 total tournament games</span></div>
       <div class="pb">
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
           <span style="font-family:var(--display);font-size:52px;color:var(--orange);" id="games-count">—</span>
@@ -276,6 +276,18 @@ footer{text-align:center;font-family:var(--mono);font-size:10px;color:var(--mute
           <div id="games-bar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,var(--orange),var(--yellow));transition:width .8s ease;width:0%;"></div>
         </div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);" id="games-stability">—</div>
+        <!-- Manual Kaggle games input -->
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+          <label style="font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;">Kaggle scored:</label>
+          <input id="kaggle-games-input" type="number" min="0" max="134"
+            placeholder="e.g. 62"
+            style="width:70px;background:var(--bg);border:1px solid var(--border);border-radius:6px;
+                   color:var(--orange);font-family:var(--mono);font-size:12px;padding:4px 8px;
+                   outline:none;text-align:center;"
+            oninput="saveKaggleGames(this.value)"
+          />
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted);" id="kaggle-games-src">← type to override</span>
+        </div>
         <div style="margin-top:14px;" id="rounds-mini"></div>
       </div>
     </div>
@@ -551,37 +563,66 @@ function parseESPN(data){
 }
 
 // ── Games Scored ──────────────────────────────────────────────────
+function saveKaggleGames(val){
+  const n = parseInt(val);
+  if(!isNaN(n) && n >= 0 && n <= 134){
+    try{ localStorage.setItem('march_kaggle_games', n); }catch(e){}
+    set('kaggle-games-src', '✓ saved');
+    // Re-render games panel immediately
+    const snaps = window._lastSnaps || [];
+    if(snaps.length) renderGamesScored(snaps);
+  } else if(val===''){
+    try{ localStorage.removeItem('march_kaggle_games'); }catch(e){}
+    set('kaggle-games-src', '← type to override');
+  }
+}
+
+function getKaggleGamesManual(){
+  try{
+    const v = localStorage.getItem('march_kaggle_games');
+    return v !== null ? parseInt(v) : null;
+  }catch(e){ return null; }
+}
+
 async function renderGamesScored(snaps){
-  // Try live ESPN data first — wrap in try/catch so failure doesn't crash page
+  window._lastSnaps = snaps; // save for manual input re-render
+  // Try live ESPN data
   let live = {completed:0,inProgress:[],scheduled:[],games:[],menCompleted:0,womenCompleted:0};
   try{
     const espnData = await fetchLiveGames();
     live = parseESPN(espnData);
   }catch(e){ console.warn('ESPN fetch failed:', e); }
 
-  // ESPN is the ground truth — Kaggle scores these same games with a few hours lag
-  const espnDone = live.completed > 0 ? live.completed : null;
-  const lastSnap = snaps && snaps.length ? snaps[snaps.length-1] : null;
+  const espnDone   = live.completed > 0 ? live.completed : null;
+  const manualVal  = getKaggleGamesManual();
+  const lastSnap   = snaps && snaps.length ? snaps[snaps.length-1] : null;
+  const menW       = lastSnap && lastSnap.games_scored_men   != null ? lastSnap.games_scored_men   : null;
+  const womenW     = lastSnap && lastSnap.games_scored_women != null ? lastSnap.games_scored_women : null;
 
-  // Use ESPN finished count as the primary display (most accurate)
-  // games_scored in snapshot is an unreliable estimate — ignore it
-  const games = espnDone || estimateGamesFromDate();
-  const pct = Math.round((games / 134) * 100);
+  // Priority: 1) manual input, 2) ESPN finished, 3) schedule estimate
+  const kaggleGames = manualVal !== null ? manualVal : (espnDone || estimateGamesFromDate());
+  const games = kaggleGames;
+  const pct   = Math.round((games / 134) * 100);
+
+  // Update input field to show current value
+  const inp = document.getElementById('kaggle-games-input');
+  if(inp && manualVal !== null && inp.value === '') inp.value = manualVal;
+
+  // Source label
+  const src = manualVal !== null ? '✓ manual' : (espnDone ? 'from ESPN' : 'estimated');
+  set('kaggle-games-src', src);
 
   set('games-count', games);
   document.getElementById('games-bar').style.width = pct+'%';
 
-  // Show ESPN as primary (accurate) and snapshot Kaggle count if API succeeded
-  const snapGames = lastSnap && lastSnap.games_scored != null ? lastSnap.games_scored : null;
-  const menW   = lastSnap && lastSnap.games_scored_men   != null ? lastSnap.games_scored_men   : null;
-  const womenW = lastSnap && lastSnap.games_scored_women != null ? lastSnap.games_scored_women : null;
-  const kagglePart = (menW!=null && womenW!=null)
-    ? `Kaggle scored: ${snapGames}/134 (${menW}M+${womenW}W)`
-    : `ESPN finished: ${games}/134`;
-  const espnPart = (espnDone!=null && menW!=null)
-    ? ` · ESPN finished: ${espnDone} (♂${live.menCompleted} ♀${live.womenCompleted})`
-    : (espnDone!=null ? ` · ESPN: ♂${live.menCompleted} ♀${live.womenCompleted}` : '');
-  set('games-sub', kagglePart + espnPart);
+  // Subtitle
+  const kaggleSub = menW!=null && womenW!=null
+    ? `Kaggle scored: ${games}/134 (${menW}M+${womenW}W)`
+    : `Kaggle scored: ${games}/134`;
+  const espnStr = espnDone!=null
+    ? ` · ESPN: ♂${live.menCompleted} ♀${live.womenCompleted}`
+    : '';
+  set('games-sub', kaggleSub + espnStr);
 
   const stability = games===0   ? 'No games scored yet — leaderboard will be volatile'
                   : games<32    ? 'Play-in + early rounds — leaderboard very volatile'
@@ -1458,6 +1499,15 @@ setInterval(async()=>{
 }, 60000);
 // Restore analyzer files from localStorage after page loads
 setTimeout(restoreFromStorage, 2000);
+// Restore manual Kaggle games input
+try{
+  const saved = localStorage.getItem('march_kaggle_games');
+  if(saved !== null){
+    const inp = document.getElementById('kaggle-games-input');
+    if(inp) inp.value = saved;
+    set('kaggle-games-src', '✓ manual (cached)');
+  }
+}catch(e){}
 
 // ── Tab switching ─────────────────────────────────────────────────
 function switchTab(n){
@@ -1753,7 +1803,7 @@ function renderAnalysis(){
     : [];
   const lastSnap    = kaggleSnaps.length ? kaggleSnaps[kaggleSnaps.length-1] : null;
   const kaggleBrier = lastSnap ? lastSnap.score : 0.19538;
-  const kaggleGames = lastSnap && lastSnap.games_scored ? lastSnap.games_scored : 48;
+  const kaggleGames = getKaggleGamesManual() || (lastSnap && lastSnap.games_scored ? lastSnap.games_scored : 48);
   const myGames = R.length;
 
   ['a-stats-row','a-charts-row','a-split-row','a-games-panel','a-log-panel'].forEach(id=>{
