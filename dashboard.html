@@ -556,13 +556,15 @@ async function renderGamesScored(snaps){
   const espnData = await fetchLiveGames();
   const live     = parseESPN(espnData);
 
-  // Use live count if available, else fall back to snapshot estimate
-  const last    = snaps[snaps.length-1];
-  // ESPN = games finished on the court
-  // Kaggle = games scored on leaderboard (lags ESPN by a few hours)
+  // Kaggle games: stored as total (men+women) in games_scored field
+  // Old snapshots have games_scored as men-only estimate (24 = 12*2) — detect and correct
+  const rawGames = last&&last.games_scored!=null ? last.games_scored : null;
+  // If rawGames <= 67, it's likely the old per-tournament estimate, not total
+  const kaggleScored = rawGames!=null
+    ? (rawGames <= 67 ? rawGames*2 : rawGames)  // old format: multiply; new format: use as-is
+    : estimateGamesFromDate()*2;
   const espnDone = live.completed > 0 ? live.completed : null;
-  const kaggleScored = last&&last.games_scored!=null ? last.games_scored*2 : estimateGamesFromDate()*2;
-  // Show Kaggle's count as primary (what actually affects your rank)
+  // Show Kaggle's official count as primary
   const games   = kaggleScored;
   const pct     = Math.round((games/134)*100);
 
@@ -1330,16 +1332,13 @@ function renderSubs(h,snaps){
 function renderTimeline(snaps){
   const el=document.getElementById('timeline');
   const reversed=[...snaps].reverse();
-  const LIMIT=50;
-  const items=reversed.slice(0,LIMIT);
   set('snap-ct',snaps.length+' snapshots');
-  if(!items.length){el.innerHTML='<div class="empty">No snapshots yet</div>';return;}
-  el.innerHTML=items.map(s=>{
+  if(!reversed.length){el.innerHTML='<div class="empty">No snapshots yet</div>';return;}
+  el.innerHTML=reversed.map(s=>{
     const c=s.rank_change;
     const sym=c==null?'<span class="tl-nc">—</span>':c<0?'<span class="tl-up">↑'+Math.abs(c)+'</span>':c>0?'<span class="tl-dn">↓'+c+'</span>':'<span class="tl-nc">→</span>';
     return'<div class="tl-item"><span class="tl-ts">'+toLocal(s)+'</span><span class="tl-r">'+(s.rank?'#'+fmtInt(s.rank):'—')+'</span><span>'+fmt(s.score,5)+'</span><span style="color:var(--muted)">'+fmt(s.top_score,5)+'</span><span>'+sym+'</span></div>';
-  }).join('')
-  +(reversed.length>LIMIT?`<div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:8px 0;text-align:center;">+ ${reversed.length-LIMIT} older snapshots not shown</div>`:'');
+  }).join('');
 }
 
 // ── chart defaults ────────────────────────────────────────────────
