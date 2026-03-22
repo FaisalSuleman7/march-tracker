@@ -6,6 +6,17 @@
   },
   "submissions": [
     {
+      "file": "submission_kaggle7.csv",
+      "description": "",
+      "score": 0.18266,
+      "status": "complete",
+      "date": "2026-03-16 11:41",
+      "selected": false,
+      "version": "v7",
+      "local_brier": 0.04595,
+      "notes": "Platt Scaling -- BEST real score"
+    },
+    {
       "file": "submission.csv",
       "description": "",
       "score": 0.19485,
@@ -15,17 +26,6 @@
       "version": "?",
       "local_brier": null,
       "notes": "First submission"
-    },
-    {
-      "file": "submission_kaggle7.csv",
-      "description": "",
-      "score": 0.19538,
-      "status": "complete",
-      "date": "2026-03-16 11:41",
-      "selected": false,
-      "version": "v7",
-      "local_brier": 0.04595,
-      "notes": "Platt Scaling -- BEST real score"
     },
     {
       "file": "submission_kaggle1.csv",
@@ -2613,10 +2613,68 @@
           "score": 0.07863
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-22T00:35:57.791988+00:00",
+      "timestamp_readable": "2026-03-22 00:35 UTC",
+      "timestamp_local": "2026-03-22 01:35",
+      "rank": 2866,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 17.76,
+      "score": 0.18266,
+      "rank_change": -160,
+      "score_change": -0.01272,
+      "top_score": 0.07129,
+      "top_team": "lookahead bias and pray",
+      "gap_to_top": 0.11137,
+      "games_scored": 32,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "lookahead bias and pray",
+          "score": 0.07129
+        },
+        {
+          "rank": 2,
+          "name": "KiroSamurai",
+          "score": 0.07349
+        },
+        {
+          "rank": 3,
+          "name": "dookada",
+          "score": 0.0752
+        },
+        {
+          "rank": 4,
+          "name": "Matthew Sanders",
+          "score": 0.07672
+        },
+        {
+          "rank": 5,
+          "name": "Panos",
+          "score": 0.07706
+        },
+        {
+          "rank": 6,
+          "name": "harry",
+          "score": 0.07711
+        },
+        {
+          "rank": 7,
+          "name": "Nathan Brekke",
+          "score": 0.07889
+        },
+        {
+          "rank": 8,
+          "name": "Marcus Harvey",
+          "score": 0.07907
+        }
+      ]
     }
   ],
-  "best_rank": 3020,
-  "best_score": 0.19538,
+  "best_rank": 2866,
+  "best_score": 0.18266,
   "submission_scores_history": [
     {
       "timestamp": "2026-03-21T10:22:52.000000+00:00",
@@ -2659,12 +2717,12 @@
       "date": "2026-03-22",
       "start_rank": 3026,
       "start_score": 0.19538,
-      "best_rank": 3026,
+      "best_rank": 2866,
       "worst_rank": 3026,
-      "end_rank": 3026,
-      "end_score": 0.19538,
-      "checks": 2,
-      "games_scored": 24
+      "end_rank": 2866,
+      "end_score": 0.18266,
+      "checks": 3,
+      "games_scored": 32
     }
   }
 }
