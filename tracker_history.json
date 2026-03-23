@@ -6487,6 +6487,66 @@
           "score": 0.09698
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-23T20:28:31.104701+00:00",
+      "timestamp_readable": "2026-03-23 20:28 UTC",
+      "timestamp_local": "2026-03-23 21:28",
+      "rank": 2466,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 29.24,
+      "score": 0.16058,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.092,
+      "top_team": "harry",
+      "gap_to_top": 0.06858,
+      "games_scored": 96,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.092
+        },
+        {
+          "rank": 2,
+          "name": "Qinghchen",
+          "score": 0.09274
+        },
+        {
+          "rank": 3,
+          "name": "KiroSamurai",
+          "score": 0.09372
+        },
+        {
+          "rank": 4,
+          "name": "seddik ben kerrouche",
+          "score": 0.09408
+        },
+        {
+          "rank": 5,
+          "name": "Marcus Harvey",
+          "score": 0.095
+        },
+        {
+          "rank": 6,
+          "name": "Harpole Stlouis",
+          "score": 0.09637
+        },
+        {
+          "rank": 7,
+          "name": "Odinn Broddason",
+          "score": 0.09693
+        },
+        {
+          "rank": 8,
+          "name": "Ginger Cross",
+          "score": 0.09698
+        }
+      ]
     }
   ],
   "best_rank": 2432,
@@ -6572,7 +6632,7 @@
       "worst_rank": 2661,
       "end_rank": 2466,
       "end_score": 0.16058,
-      "checks": 19,
+      "checks": 20,
       "games_scored": 96
     }
   }
