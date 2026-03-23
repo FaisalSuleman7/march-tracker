@@ -5767,6 +5767,66 @@
           "score": 0.08685
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-23T09:33:53.775965+00:00",
+      "timestamp_readable": "2026-03-23 09:33 UTC",
+      "timestamp_local": "2026-03-23 10:33",
+      "rank": 2482,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 28.78,
+      "score": 0.15788,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.08295,
+      "top_team": "harry",
+      "gap_to_top": 0.07493,
+      "games_scored": 96,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.08295
+        },
+        {
+          "rank": 2,
+          "name": "KiroSamurai",
+          "score": 0.08308
+        },
+        {
+          "rank": 3,
+          "name": "Marcus Harvey",
+          "score": 0.08556
+        },
+        {
+          "rank": 4,
+          "name": "alxndrkalinin",
+          "score": 0.08571
+        },
+        {
+          "rank": 5,
+          "name": "Qinghchen",
+          "score": 0.08611
+        },
+        {
+          "rank": 6,
+          "name": "Filtered",
+          "score": 0.08625
+        },
+        {
+          "rank": 7,
+          "name": "Don't Hardcode Florida",
+          "score": 0.08654
+        },
+        {
+          "rank": 8,
+          "name": "JOJO",
+          "score": 0.08685
+        }
+      ]
     }
   ],
   "best_rank": 2482,
@@ -5828,7 +5888,7 @@
       "worst_rank": 2661,
       "end_rank": 2482,
       "end_score": 0.15788,
-      "checks": 7,
+      "checks": 8,
       "games_scored": 96
     }
   }
