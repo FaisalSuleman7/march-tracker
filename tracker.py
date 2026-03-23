@@ -259,6 +259,29 @@ def load_history():
 def save_history(history, submissions=None):
     if submissions is not None:
         history['submissions'] = submissions
+        # Record submission scores history on every save -- powers the Trends chart
+        now_utc = datetime.now(timezone.utc)
+        munich  = now_utc + __import__('datetime').timedelta(hours=1)
+        scores  = {}
+        for s in submissions:
+            if s.get('file') and s.get('score') is not None:
+                scores[s['file']] = s['score']
+        if scores:
+            if 'submission_scores_history' not in history:
+                history['submission_scores_history'] = []
+            # Only add a new entry if scores changed OR it's the first entry today
+            existing = history['submission_scores_history']
+            last_entry = existing[-1] if existing else None
+            last_scores = last_entry.get('scores', {}) if last_entry else {}
+            today = munich.strftime('%Y-%m-%d')
+            last_date = (last_entry.get('timestamp_local','') or '')[:10] if last_entry else ''
+            if scores != last_scores or last_date != today:
+                existing.append({
+                    'timestamp'      : now_utc.isoformat(),
+                    'timestamp_local': munich.strftime('%Y-%m-%d %H:%M'),
+                    'note'           : 'Auto-recorded',
+                    'scores'         : scores
+                })
     with open(HISTORY_FILE, 'w') as f:
         json.dump(history, f, indent=2)
 
