@@ -8,7 +8,7 @@
     {
       "file": "submission_kaggle7.csv",
       "description": "",
-      "score": 0.15788,
+      "score": 0.16058,
       "status": "complete",
       "date": "2026-03-16 11:41",
       "selected": false,
@@ -5947,9 +5947,69 @@
           "score": 0.08685
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-23T10:42:54.028728+00:00",
+      "timestamp_readable": "2026-03-23 10:42 UTC",
+      "timestamp_local": "2026-03-23 11:42",
+      "rank": 2432,
+      "total_teams": 3441,
+      "scored_teams": 3441,
+      "percentile": 29.32,
+      "score": 0.16058,
+      "rank_change": -50,
+      "score_change": 0.0027,
+      "top_score": 0.08753,
+      "top_team": "seddik ben kerrouche",
+      "gap_to_top": 0.07305,
+      "games_scored": 96,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "seddik ben kerrouche",
+          "score": 0.08753
+        },
+        {
+          "rank": 2,
+          "name": "xiaocaikun",
+          "score": 0.08766
+        },
+        {
+          "rank": 3,
+          "name": "mbundy1237",
+          "score": 0.08901
+        },
+        {
+          "rank": 4,
+          "name": "jambrumac",
+          "score": 0.08924
+        },
+        {
+          "rank": 5,
+          "name": "Ian Teigen",
+          "score": 0.08968
+        },
+        {
+          "rank": 6,
+          "name": "\u6a58\u5b50\u5473\u76d0\u6c7d\u6c34",
+          "score": 0.09162
+        },
+        {
+          "rank": 7,
+          "name": "Danil Kutsy",
+          "score": 0.09167
+        },
+        {
+          "rank": 8,
+          "name": "\u674eBCDEFGA",
+          "score": 0.09167
+        }
+      ]
     }
   ],
-  "best_rank": 2482,
+  "best_rank": 2432,
   "best_score": 0.15788,
   "submission_scores_history": [
     {
@@ -5987,6 +6047,18 @@
         "submission (1).csv": 0.20015,
         "submission_kaggle2.csv": 0.24983
       }
+    },
+    {
+      "timestamp": "2026-03-23T10:42:54.028785+00:00",
+      "timestamp_local": "2026-03-23 11:42",
+      "note": "Auto-recorded",
+      "scores": {
+        "submission_kaggle7.csv": 0.16058,
+        "submission.csv": 0.19485,
+        "submission_kaggle1.csv": 0.20015,
+        "submission (1).csv": 0.20015,
+        "submission_kaggle2.csv": 0.24983
+      }
     }
   ],
   "daily_summaries": {
@@ -6016,11 +6088,11 @@
       "date": "2026-03-23",
       "start_rank": 2661,
       "start_score": 0.17243,
-      "best_rank": 2482,
+      "best_rank": 2432,
       "worst_rank": 2661,
-      "end_rank": 2482,
-      "end_score": 0.15788,
-      "checks": 10,
+      "end_rank": 2432,
+      "end_score": 0.16058,
+      "checks": 11,
       "games_scored": 96
     }
   }
