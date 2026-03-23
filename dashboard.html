@@ -1426,116 +1426,125 @@ function renderSubTrends(h,snaps){
   const COLORS=['#22c55e','#f97316','#3b82f6','#eab308','#ec4899','#06b6d4','#8b5cf6'];
   let ci=0;
 
-  // Build datasets from snapshots — each submission's Kaggle score over time
-  // A submission's score changes when Kaggle rescores after more games are played
   const subs = (h.submissions||[]).filter(s=>s.score);
   if(!subs.length) return;
 
-  // Get score history per submission from submission_scores_history
+  // ── Build a unified timeline from ALL sources ──────────────────────────────
+  // Source 1: snapshot score changes — your selected submission score over time
+  // Source 2: submission_scores_history — manual + auto-recorded entries
+  // Merge both, deduplicate by timestamp, sort chronologically
+
+  const timeMap = {}; // timestamp_local -> {scores: {file->score}, label}
+
+  // From snapshots: track when your selected submission's score changed
+  // The snapshot 'score' field IS your selected submission's Kaggle score
+  const selectedSub = subs.find(s=>s.selected) || subs[0];
+  let prevSnapScore = null;
+  for(const s of snaps){
+    if(s.score && s.score !== prevSnapScore){
+      const key = s.timestamp_local || s.timestamp.slice(0,16).replace('T',' ');
+      if(!timeMap[key]) timeMap[key] = {scores:{}, label: key, games: s.games_scored};
+      timeMap[key].scores[selectedSub.file] = s.score;
+      // Fill other subs proportionally (they move together when Kaggle rescores)
+      // We don't know exact scores for non-selected subs from snapshots alone
+      prevSnapScore = s.score;
+    }
+  }
+
+  // From submission_scores_history: has ALL submission scores at each rescore point
   const scoreHistory = h.submission_scores_history || [];
+  for(const e of scoreHistory){
+    const key = e.timestamp_local || (e.timestamp||'').slice(0,16).replace('T',' ');
+    if(!timeMap[key]) timeMap[key] = {scores:{}, label: key};
+    // Merge scores — history has full data for all subs
+    Object.assign(timeMap[key].scores, e.scores||{});
+    if(e.note) timeMap[key].note = e.note;
+  }
 
-  // Build timeline: use snapshots as x-axis (deduplicated by score changes)
-  // For each submission, plot its score at each snapshot timestamp
-  const timelineSnaps = snaps.filter(s=>s.score);
-  if(!timelineSnaps.length) return;
+  // Sort timeline entries by timestamp
+  const timeline = Object.entries(timeMap)
+    .sort((a,b)=> a[0].localeCompare(b[0]))
+    .map(([key, val])=>({...val, key}));
 
-  let datasets;
-  if(scoreHistory.length >= 2){
-    // Rich mode: use submission_scores_history entries
-    const labels = scoreHistory.map(e=>
-      (e.timestamp_local||e.timestamp||'').slice(0,16).replace('T',' ')
-    );
-    const allFiles = [...new Set(scoreHistory.flatMap(e=>Object.keys(e.scores||{})))];
-    datasets = allFiles.map(file=>{
-      const sub   = subs.find(s=>s.file===file)||{file};
-      const label = subLabel(sub.version&&sub.version!=='?'?sub:{file});
-      const color = sub.selected?'#22c55e':COLORS[ci++%COLORS.length];
-      return{
-        label, data: scoreHistory.map(e=>(e.scores||{})[file]||null),
-        borderColor:color, backgroundColor:color+'22',
-        borderWidth:sub.selected?3:1.5, borderDash:sub.selected?[]:[4,3],
-        pointBackgroundColor:color, pointBorderColor:'#080b10',
-        pointBorderWidth:2, pointRadius:sub.selected?6:4,
-        pointHoverRadius:8, tension:0, fill:false
-      };
+  if(timeline.length < 1) return;
+
+  const labels = timeline.map(e=>e.key);
+
+  // Build dataset per submission
+  const datasets = subs.map(sub=>{
+    const color = sub.selected ? '#22c55e' : COLORS[ci++%COLORS.length];
+    const label = sub.version && sub.version!=='?'
+      ? `${sub.version} (${sub.file.replace('submission_kaggle','v').replace('.csv','').replace('submission','sub')})`
+      : sub.file.replace('submission_','').replace('.csv','');
+
+    // For each timeline point, get this sub's score
+    // If not in this entry but known from later/earlier, carry forward last known value
+    let lastKnown = null;
+    const data = timeline.map(e=>{
+      const val = e.scores[sub.file];
+      if(val != null) lastKnown = val;
+      return lastKnown; // carry forward
     });
 
-    const ctx=document.getElementById('cSubTrends').getContext('2d');
-    if(cSubTrends)cSubTrends.destroy();
-    cSubTrends=new Chart(ctx,{type:'line',data:{labels,datasets},
-      options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
-        plugins:{
-          legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:10},boxWidth:12,padding:14}},
-          tooltip:{backgroundColor:'#0f1318',borderColor:'#1e2530',borderWidth:1,
-            titleColor:'#475569',bodyColor:'#e2e8f0',padding:10,mode:'index',intersect:false,
-            callbacks:{
-              title:c=>'📅 '+c[0].label,
-              label:c=>c.raw!=null?'  '+c.dataset.label+': '+fmt(c.raw,5):null,
-              afterBody:c=>{
-                const i=c[0].dataIndex;
-                return scoreHistory[i]&&scoreHistory[i].note?['  📝 '+scoreHistory[i].note]:[];
-              }
-            }
-          }
-        },
-        scales:{
-          x:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxRotation:30,maxTicksLimit:9},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}},
-          y:{reverse:false,ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxTicksLimit:7},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
-            title:{display:true,text:'Kaggle Score (lower = better)',color:'#475569',font:{family:'JetBrains Mono',size:9}}}
-        }
-      }
-    });
-    return;
-  }
-
-  // Fallback: plot each submission's score against YOUR score evolution over snapshots
-  // This shows how your selected submission score changed as Kaggle rescored
-  // Use snapshots where your score changed as breakpoints
-  const uniqueScoreSnaps = [];
-  let lastScore = null;
-  for(const s of timelineSnaps){
-    if(s.score !== lastScore){ uniqueScoreSnaps.push(s); lastScore=s.score; }
-  }
-  if(uniqueScoreSnaps.length < 2){
-    // Not enough variation — just plot all snapshots (shows flat line but at least renders)
-    uniqueScoreSnaps.push(...timelineSnaps);
-  }
-
-  const labels = uniqueScoreSnaps.map(s=>toLocal(s));
-  datasets = subs.map(sub=>{
-    const color = sub.selected?'#22c55e':COLORS[ci++%COLORS.length];
-    // Score is constant (Kaggle only updates when games are scored)
-    // Show as horizontal line at the submission's current score
     return{
-      label: subLabel(sub.version&&sub.version!=='?'?sub:{file:sub.file}),
-      data: uniqueScoreSnaps.map(()=>sub.score),
-      borderColor:color, backgroundColor:color+'22',
-      borderWidth:sub.selected?3:1.5, borderDash:sub.selected?[]:[4,3],
-      pointBackgroundColor:color, pointBorderColor:'#080b10',
-      pointBorderWidth:2, pointRadius:0, pointHoverRadius:6,
-      tension:0, fill:false
+      label,
+      data,
+      borderColor: color,
+      backgroundColor: color+'22',
+      borderWidth: sub.selected ? 3 : 1.5,
+      borderDash: sub.selected ? [] : [4,3],
+      pointBackgroundColor: color,
+      pointBorderColor: '#080b10',
+      pointBorderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+      tension: 0,
+      fill: false,
+      stepped: 'before' // step chart — scores change discretely
     };
   }).filter(d=>d.data.some(v=>v!=null));
 
   if(!datasets.length) return;
-  const ctx=document.getElementById('cSubTrends').getContext('2d');
-  if(cSubTrends)cSubTrends.destroy();
-  cSubTrends=new Chart(ctx,{type:'line',data:{labels,datasets},
-    options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},
+
+  const ctx = document.getElementById('cSubTrends').getContext('2d');
+  if(cSubTrends) cSubTrends.destroy();
+  cSubTrends = new Chart(ctx,{
+    type:'line',
+    data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:400},
       plugins:{
-        legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:10},boxWidth:12,padding:14}},
-        tooltip:{backgroundColor:'#0f1318',borderColor:'#1e2530',borderWidth:1,
-          titleColor:'#475569',bodyColor:'#e2e8f0',padding:10,mode:'index',intersect:false,
-          callbacks:{title:c=>'📅 '+c[0].label,label:c=>'  '+c.dataset.label+': '+fmt(c.raw!=null?c.raw:null,5)}}
+        legend:{display:true,labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:9},boxWidth:10,padding:10}},
+        tooltip:{
+          backgroundColor:'#0f1318',borderColor:'#1e2530',borderWidth:1,
+          titleColor:'#475569',bodyColor:'#e2e8f0',
+          titleFont:{family:'JetBrains Mono',size:9},bodyFont:{family:'JetBrains Mono',size:10},
+          padding:8,mode:'index',intersect:false,
+          callbacks:{
+            title:c=>`📅 ${c[0].label}`,
+            label:c=>c.raw!=null?`  ${c.dataset.label}: ${fmt(c.raw,5)}`:null,
+            afterBody:c=>{
+              const i=c[0].dataIndex;
+              return timeline[i]&&timeline[i].note?[`  📝 ${timeline[i].note}`]:[];
+            }
+          }
+        }
       },
       scales:{
-        x:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxRotation:30,maxTicksLimit:9},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}},
-        y:{ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxTicksLimit:7},grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
-          title:{display:true,text:'Kaggle Score (lower = better)',color:'#475569',font:{family:'JetBrains Mono',size:9}}}
+        x:{
+          ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxRotation:30,maxTicksLimit:10},
+          grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'}
+        },
+        y:{
+          ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:7},
+          grid:{color:'rgba(30,37,48,.9)'},border:{color:'rgba(30,37,48,.9)'},
+          title:{display:true,text:'Kaggle Score (lower = better)',color:'#475569',font:{family:'JetBrains Mono',size:8}}
+        }
       }
     }
   });
 }
+
 
 load();
 setInterval(load,60000);
