@@ -8,7 +8,7 @@
     {
       "file": "submission_kaggle7.csv",
       "description": "",
-      "score": 0.16231,
+      "score": 0.15898,
       "status": "complete",
       "date": "2026-03-16 11:41",
       "selected": false,
@@ -7507,9 +7507,69 @@
           "score": 0.10446
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-24T14:13:19.721637+00:00",
+      "timestamp_readable": "2026-03-24 14:13 UTC",
+      "timestamp_local": "2026-03-24 15:13",
+      "rank": 2411,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 30.82,
+      "score": 0.15898,
+      "rank_change": -12,
+      "score_change": -0.00333,
+      "top_score": 0.0956,
+      "top_team": "harry",
+      "gap_to_top": 0.06338,
+      "games_scored": 96,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.0956
+        },
+        {
+          "rank": 2,
+          "name": "seddik SsD",
+          "score": 0.09855
+        },
+        {
+          "rank": 3,
+          "name": "Qinghchen",
+          "score": 0.09873
+        },
+        {
+          "rank": 4,
+          "name": "basket default swap",
+          "score": 0.10147
+        },
+        {
+          "rank": 5,
+          "name": "ZhenruiWeng",
+          "score": 0.10179
+        },
+        {
+          "rank": 6,
+          "name": "Marcus Harvey",
+          "score": 0.10214
+        },
+        {
+          "rank": 7,
+          "name": "xiaocaikun",
+          "score": 0.10229
+        },
+        {
+          "rank": 8,
+          "name": "moonkay",
+          "score": 0.10231
+        }
+      ]
     }
   ],
-  "best_rank": 2423,
+  "best_rank": 2411,
   "best_score": 0.15788,
   "submission_scores_history": [
     {
@@ -7583,6 +7643,18 @@
         "submission (1).csv": 0.20015,
         "submission_kaggle2.csv": 0.24983
       }
+    },
+    {
+      "timestamp": "2026-03-24T14:13:19.721681+00:00",
+      "timestamp_local": "2026-03-24 15:13",
+      "note": "Auto-recorded",
+      "scores": {
+        "submission_kaggle7.csv": 0.15898,
+        "submission.csv": 0.19485,
+        "submission_kaggle1.csv": 0.20015,
+        "submission (1).csv": 0.20015,
+        "submission_kaggle2.csv": 0.24983
+      }
     }
   ],
   "daily_summaries": {
@@ -7623,11 +7695,11 @@
       "date": "2026-03-24",
       "start_rank": 2466,
       "start_score": 0.16058,
-      "best_rank": 2423,
+      "best_rank": 2411,
       "worst_rank": 2466,
-      "end_rank": 2423,
-      "end_score": 0.16231,
-      "checks": 12,
+      "end_rank": 2411,
+      "end_score": 0.15898,
+      "checks": 13,
       "games_scored": 96
     }
   }
