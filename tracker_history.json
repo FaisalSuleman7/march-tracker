@@ -7327,6 +7327,66 @@
           "score": 0.10446
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-24T10:40:29.349340+00:00",
+      "timestamp_readable": "2026-03-24 10:40 UTC",
+      "timestamp_local": "2026-03-24 11:40",
+      "rank": 2423,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 30.47,
+      "score": 0.16231,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.09764,
+      "top_team": "harry",
+      "gap_to_top": 0.06467,
+      "games_scored": 96,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.09764
+        },
+        {
+          "rank": 2,
+          "name": "seddik ben kerrouche",
+          "score": 0.10057
+        },
+        {
+          "rank": 3,
+          "name": "Qinghchen",
+          "score": 0.10077
+        },
+        {
+          "rank": 4,
+          "name": "abobus",
+          "score": 0.10363
+        },
+        {
+          "rank": 5,
+          "name": "ZhenruiWeng",
+          "score": 0.10387
+        },
+        {
+          "rank": 6,
+          "name": "Marcus Harvey",
+          "score": 0.10412
+        },
+        {
+          "rank": 7,
+          "name": "moonkay",
+          "score": 0.10442
+        },
+        {
+          "rank": 8,
+          "name": "xiaocaikun",
+          "score": 0.10446
+        }
+      ]
     }
   ],
   "best_rank": 2423,
@@ -7447,7 +7507,7 @@
       "worst_rank": 2466,
       "end_rank": 2423,
       "end_score": 0.16231,
-      "checks": 9,
+      "checks": 10,
       "games_scored": 96
     }
   }
