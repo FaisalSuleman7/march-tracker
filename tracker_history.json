@@ -16147,6 +16147,66 @@
           "score": 0.1118458
         }
       ]
+    },
+    {
+      "timestamp": "2026-03-29T23:23:48.266530+00:00",
+      "timestamp_readable": "2026-03-29 23:23 UTC",
+      "timestamp_local": "2026-03-30 00:23",
+      "rank": 2479,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 28.87,
+      "score": 0.1691255,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.1048486,
+      "top_team": "harry",
+      "gap_to_top": 0.064277,
+      "games_scored": 116,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.1048486
+        },
+        {
+          "rank": 2,
+          "name": "seddik SsD",
+          "score": 0.1068516
+        },
+        {
+          "rank": 3,
+          "name": "ZhenruiWeng",
+          "score": 0.108607
+        },
+        {
+          "rank": 4,
+          "name": "Brendan Carlin",
+          "score": 0.1086605
+        },
+        {
+          "rank": 5,
+          "name": "xiaocaikun",
+          "score": 0.1097859
+        },
+        {
+          "rank": 6,
+          "name": "Qinghchen",
+          "score": 0.1113802
+        },
+        {
+          "rank": 7,
+          "name": "Jay Lakhupota",
+          "score": 0.1114019
+        },
+        {
+          "rank": 8,
+          "name": "Masaya Kawamata",
+          "score": 0.1118458
+        }
+      ]
     }
   ],
   "best_rank": 1049,
@@ -16343,6 +16403,18 @@
         "submission (1).csv": 0.2001502,
         "submission_kaggle2.csv": 0.2498342
       }
+    },
+    {
+      "timestamp": "2026-03-29T23:23:48.266586+00:00",
+      "timestamp_local": "2026-03-30 00:23",
+      "note": "Auto-recorded",
+      "scores": {
+        "submission_kaggle7.csv": 0.1691255,
+        "submission.csv": 0.1948501,
+        "submission_kaggle1.csv": 0.2001502,
+        "submission (1).csv": 0.2001502,
+        "submission_kaggle2.csv": 0.2498342
+      }
     }
   ],
   "daily_summaries": {
@@ -16443,6 +16515,17 @@
       "end_rank": 2479,
       "end_score": 0.1691255,
       "checks": 31,
+      "games_scored": 116
+    },
+    "2026-03-30": {
+      "date": "2026-03-30",
+      "start_rank": 2479,
+      "start_score": 0.1691255,
+      "best_rank": 2479,
+      "worst_rank": 2479,
+      "end_rank": 2479,
+      "end_score": 0.1691255,
+      "checks": 1,
       "games_scored": 116
     }
   }
