@@ -23047,6 +23047,66 @@
           "score": 0.1120435
         }
       ]
+    },
+    {
+      "timestamp": "2026-04-04T10:35:15.852786+00:00",
+      "timestamp_readable": "2026-04-04 10:35 UTC",
+      "timestamp_local": "2026-04-04 11:35",
+      "rank": 2475,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 28.98,
+      "score": 0.1681499,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.1050528,
+      "top_team": "harry",
+      "gap_to_top": 0.063097,
+      "games_scored": 120,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.1050528
+        },
+        {
+          "rank": 2,
+          "name": "Brendan Carlin",
+          "score": 0.108494
+        },
+        {
+          "rank": 3,
+          "name": "seddik SsD",
+          "score": 0.1089627
+        },
+        {
+          "rank": 4,
+          "name": "ZhenruiWeng",
+          "score": 0.110121
+        },
+        {
+          "rank": 5,
+          "name": "Jay Lakhupota",
+          "score": 0.1112355
+        },
+        {
+          "rank": 6,
+          "name": "matcha_nooo",
+          "score": 0.1117141
+        },
+        {
+          "rank": 7,
+          "name": "flaty",
+          "score": 0.1119835
+        },
+        {
+          "rank": 8,
+          "name": "Qinghchen",
+          "score": 0.1120435
+        }
+      ]
     }
   ],
   "best_rank": 1049,
@@ -23504,7 +23564,7 @@
       "worst_rank": 2475,
       "end_rank": 2475,
       "end_score": 0.1681499,
-      "checks": 9,
+      "checks": 10,
       "games_scored": 120
     }
   }
