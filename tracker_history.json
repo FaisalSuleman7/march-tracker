@@ -8,7 +8,7 @@
     {
       "file": "submission_kaggle7.csv",
       "description": "",
-      "score": 0.1681499,
+      "score": 0.1655911,
       "status": "complete",
       "date": "2026-03-16 11:41",
       "selected": false,
@@ -23287,6 +23287,66 @@
           "score": 0.1120435
         }
       ]
+    },
+    {
+      "timestamp": "2026-04-04T13:44:38.201457+00:00",
+      "timestamp_readable": "2026-04-04 13:44 UTC",
+      "timestamp_local": "2026-04-04 14:44",
+      "rank": 2384,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 31.59,
+      "score": 0.1655911,
+      "rank_change": -91,
+      "score_change": -0.002559,
+      "top_score": 0.1055864,
+      "top_team": "harry",
+      "gap_to_top": 0.060005,
+      "games_scored": 120,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.1055864
+        },
+        {
+          "rank": 2,
+          "name": "ZhenruiWeng",
+          "score": 0.1126933
+        },
+        {
+          "rank": 3,
+          "name": "Brendan Carlin",
+          "score": 0.1127557
+        },
+        {
+          "rank": 4,
+          "name": "seddik SsD",
+          "score": 0.1133305
+        },
+        {
+          "rank": 5,
+          "name": "Yi Zhang (Xroxa)",
+          "score": 0.1159361
+        },
+        {
+          "rank": 6,
+          "name": "Masaya Kawamata",
+          "score": 0.1159575
+        },
+        {
+          "rank": 7,
+          "name": "Jay Lakhupota",
+          "score": 0.1160275
+        },
+        {
+          "rank": 8,
+          "name": "abobus",
+          "score": 0.1160494
+        }
+      ]
     }
   ],
   "best_rank": 1049,
@@ -23579,6 +23639,18 @@
         "submission (1).csv": 0.2001502,
         "submission_kaggle2.csv": 0.2498342
       }
+    },
+    {
+      "timestamp": "2026-04-04T13:44:38.201509+00:00",
+      "timestamp_local": "2026-04-04 14:44",
+      "note": "Auto-recorded",
+      "scores": {
+        "submission_kaggle7.csv": 0.1655911,
+        "submission.csv": 0.1948501,
+        "submission_kaggle1.csv": 0.2001502,
+        "submission (1).csv": 0.2001502,
+        "submission_kaggle2.csv": 0.2498342
+      }
     }
   ],
   "daily_summaries": {
@@ -23740,11 +23812,11 @@
       "date": "2026-04-04",
       "start_rank": 2475,
       "start_score": 0.1681499,
-      "best_rank": 2475,
+      "best_rank": 2384,
       "worst_rank": 2475,
-      "end_rank": 2475,
-      "end_score": 0.1681499,
-      "checks": 13,
+      "end_rank": 2384,
+      "end_score": 0.1655911,
+      "checks": 14,
       "games_scored": 120
     }
   }
