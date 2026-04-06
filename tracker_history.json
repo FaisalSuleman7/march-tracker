@@ -27187,6 +27187,66 @@
           "score": 0.1186078
         }
       ]
+    },
+    {
+      "timestamp": "2026-04-06T22:27:32.531211+00:00",
+      "timestamp_readable": "2026-04-06 22:27 UTC",
+      "timestamp_local": "2026-04-06 23:27",
+      "rank": 2342,
+      "total_teams": 3485,
+      "scored_teams": 3485,
+      "percentile": 32.8,
+      "score": 0.164934,
+      "rank_change": 0,
+      "score_change": 0.0,
+      "top_score": 0.109495,
+      "top_team": "harry",
+      "gap_to_top": 0.055439,
+      "games_scored": 134,
+      "games_scored_men": null,
+      "games_scored_women": null,
+      "top8": [
+        {
+          "rank": 1,
+          "name": "harry",
+          "score": 0.109495
+        },
+        {
+          "rank": 2,
+          "name": "Brendan Carlin",
+          "score": 0.1154075
+        },
+        {
+          "rank": 3,
+          "name": "stormtrace",
+          "score": 0.1160801
+        },
+        {
+          "rank": 4,
+          "name": "Yi Zhang (Xroxa)",
+          "score": 0.1164895
+        },
+        {
+          "rank": 5,
+          "name": "Kevin E R MILLE",
+          "score": 0.1165956
+        },
+        {
+          "rank": 6,
+          "name": "seddik SsD",
+          "score": 0.1183098
+        },
+        {
+          "rank": 7,
+          "name": "alphawave9",
+          "score": 0.1183999
+        },
+        {
+          "rank": 8,
+          "name": "H\u1eefu Ph\u01b0\u1edbc Ph\u1ea1m Quang",
+          "score": 0.1186078
+        }
+      ]
     }
   ],
   "best_rank": 1049,
@@ -27726,7 +27786,7 @@
       "worst_rank": 2342,
       "end_rank": 2342,
       "end_score": 0.164934,
-      "checks": 19,
+      "checks": 20,
       "games_scored": 134
     }
   }
